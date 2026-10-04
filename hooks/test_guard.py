@@ -74,6 +74,24 @@ HEREDOC_DENIED = [
     "bash <<'EOF'\ngit push origin main\nEOF",
     "sudo sh <<EOF\ngit push --force origin x\nEOF",
     "cat <<EOF\nnotes\nEOF\ngit push origin main",
+    "cat <<EOF && git push origin main\nx\nEOF",
+    "cat <<EOF; git push --force origin x\nx\nEOF",
+]
+
+UNVERIFIABLE_DENIED = [
+    "git push origin $'main'",
+    "B=main; git push origin $B",
+    "git push origin {main,x}",
+    "git push origin \"$(echo main)\"",
+    "git push origin $(echo main)",
+    "git push origin ma*",
+    "git push origin \\\nmain",
+]
+
+ALIAS_DENIED = [
+    "git p origin main",
+    "git -c alias.q=push q origin main",
+    "git -c 'alias.s=!git push origin main' s",
 ]
 
 
@@ -103,6 +121,7 @@ class GitPushRulesTest(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.feature_repo = make_repo(cls.tmp.name, "moth/ACME-123")
+        git("config", "alias.p", "push", cwd=cls.feature_repo)
         cls.main_repo = make_repo(cls.tmp.name, "main")
 
     @classmethod
@@ -113,6 +132,12 @@ class GitPushRulesTest(unittest.TestCase):
         for command in DENIED:
             with self.subTest(command=command):
                 self.assertTrue(is_denied(command, self.feature_repo))
+
+    def test_unverifiable_targets_and_aliases_are_denied(self):
+        for command in UNVERIFIABLE_DENIED + ALIAS_DENIED:
+            with self.subTest(command=command):
+                self.assertTrue(is_denied(command, self.feature_repo))
+        self.assertFalse(is_denied("git p origin moth/ACME-123", self.feature_repo))
 
     def test_heredoc_body_is_checked_only_when_a_shell_runs_it(self):
         for command in HEREDOC_DENIED:
@@ -139,7 +164,7 @@ class GitPushRulesTest(unittest.TestCase):
 
 
 class FailClosedTest(unittest.TestCase):
-    def run_hook(self, guard_json, command="echo hi"):
+    def run_hook(self, guard_json, command="echo hi", stdin=None):
         with tempfile.TemporaryDirectory() as project:
             if guard_json is not None:
                 os.makedirs(os.path.join(project, ".moth"))
@@ -148,7 +173,7 @@ class FailClosedTest(unittest.TestCase):
             payload = {"tool_name": "Bash", "tool_input": {"command": command}, "cwd": project}
             result = subprocess.run(
                 [sys.executable, os.path.join(HOOKS, "guard.py")],
-                input=json.dumps(payload), capture_output=True, text=True,
+                input=json.dumps(payload) if stdin is None else stdin, capture_output=True, text=True,
                 env={**os.environ, "CLAUDE_PROJECT_DIR": project},
             )
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -159,6 +184,9 @@ class FailClosedTest(unittest.TestCase):
 
     def test_invalid_rule_denies(self):
         self.assertIn('"deny"', self.run_hook('{"bash_deny": [{"pattern": "("}]}'))
+
+    def test_unreadable_payload_denies(self):
+        self.assertIn('"deny"', self.run_hook("{}", stdin="not json"))
 
     def test_valid_guard_allows_harmless_command(self):
         self.assertEqual(self.run_hook('{"bash_deny": []}'), "")

@@ -27,6 +27,16 @@ HEREDOC = re.compile(
     re.DOTALL,
 )
 MAX_DEPTH = 5
+UNVERIFIABLE = re.compile(r"[$`{}*?\[~]")
+GIT_BUILTINS = {
+    "add", "am", "apply", "bisect", "blame", "branch", "cat-file", "checkout", "cherry-pick",
+    "clean", "clone", "commit", "commit-tree", "config", "describe", "diff", "fetch",
+    "for-each-ref", "format-patch", "gc", "grep", "hash-object", "help", "init", "log",
+    "ls-files", "ls-remote", "ls-tree", "merge", "merge-base", "mv", "notes", "pull", "read-tree",
+    "rebase", "reflog", "remote", "reset", "restore", "rev-list", "rev-parse", "revert", "rm",
+    "shortlog", "show", "stash", "status", "submodule", "switch", "symbolic-ref", "tag",
+    "update-index", "version", "worktree", "write-tree",
+}
 
 
 class Denied(Exception):
@@ -38,13 +48,14 @@ def drop_data_heredocs(command):
         line_start = command.rfind("\n", 0, match.start()) + 1
         feeder = strip_wrappers(command[line_start:match.start()].split())
         runs_body = bool(feeder) and os.path.basename(feeder[0]) in SHELLS
-        return f"\n{match.group('body')}\n" if runs_body else "\n"
+        body = f"\n{match.group('body')}" if runs_body else ""
+        return f"{match.group('rest')}{body}\n"
 
     return HEREDOC.sub(replace, command)
 
 
 def tokenize(command):
-    text = drop_data_heredocs(command).replace("`", "\n")
+    text = drop_data_heredocs(command.replace("\\\n", "")).replace("`", "\n")
     try:
         return _lex(text)
     except ValueError:
@@ -78,8 +89,6 @@ def simple_commands(tokens):
             words = []
         elif token in REDIRECTS:
             skip_next = True
-        elif token == "$":
-            continue
         else:
             words.append(token)
     if words:
@@ -135,6 +144,9 @@ def check_push(args, cwd):
             positional.append(arg)
         i += 1
 
+    if any(UNVERIFIABLE.search(p) for p in positional):
+        raise Denied("push target uses shell expansion ($, {}, *, ~); name the branch literally")
+
     refspecs = positional[1:]
     if any(r.startswith("+") for r in refspecs):
         raise Denied("force push is not allowed")
@@ -156,18 +168,48 @@ def check_push(args, cwd):
             raise Denied("pushing to main/master is not allowed")
 
 
-def check_git(words, cwd):
-    i = 1
+def git_alias(cwd, name):
+    try:
+        result = subprocess.run(
+            ["git", "-C", cwd, "config", "--get", f"alias.{name}"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return result.stdout.strip() or None
+
+
+def check_git(words, cwd, depth):
+    inline_aliases, i = {}, 1
     while i < len(words) and words[i].startswith("-"):
         opt = words[i]
         if opt in GIT_OPTS_WITH_VALUE:
-            if opt == "-C" and i + 1 < len(words):
-                cwd = os.path.join(cwd, words[i + 1])
+            value = words[i + 1] if i + 1 < len(words) else ""
+            if opt == "-C":
+                cwd = os.path.join(cwd, value)
+            elif opt == "-c" and value.startswith("alias."):
+                name, _, expansion = value[len("alias."):].partition("=")
+                inline_aliases[name] = expansion
             i += 2
         else:
             i += 1
-    if i < len(words) and words[i] == "push":
-        check_push(words[i + 1:], cwd)
+    if i >= len(words):
+        return
+    sub, rest = words[i], words[i + 1:]
+    if sub == "push":
+        check_push(rest, cwd)
+        return
+    if sub in GIT_BUILTINS:
+        return
+    alias = inline_aliases.get(sub) or git_alias(cwd, sub)
+    if not alias:
+        return
+    if depth >= MAX_DEPTH:
+        raise Denied("git alias nests too deeply to check")
+    if alias.startswith("!"):
+        check_command(" ".join([alias[1:], *map(shlex.quote, rest)]), cwd, depth + 1)
+    else:
+        check_git(["git", *shlex.split(alias), *rest], cwd, depth + 1)
 
 
 def check_gh(words):
@@ -200,7 +242,7 @@ def check_simple(words, cwd, depth):
                 check_command(words[j + 1], cwd, depth + 1)
                 break
     elif name == "git":
-        check_git(words, cwd)
+        check_git(words, cwd, depth)
     elif name == "gh":
         check_gh(words)
     return cwd
@@ -264,8 +306,13 @@ def check_mcp(tool_name, guard):
 
 
 def main():
-    payload = json.load(sys.stdin)
-    cwd = payload.get("cwd") or os.getcwd()
+    try:
+        payload = json.load(sys.stdin)
+    except ValueError:
+        payload = None
+    if not isinstance(payload, dict):
+        payload = None
+    cwd = (payload or {}).get("cwd") or os.getcwd()
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR") or cwd
 
     try:
@@ -274,6 +321,8 @@ def main():
         deny(f"cannot read .moth/guard.json ({err}); fix it or run /moth:moth-init --sync")
     if guard is None:
         sys.exit(0)
+    if payload is None:
+        deny("unreadable hook input; denying to stay safe")
 
     tool_name = payload.get("tool_name", "")
     tool_input = payload.get("tool_input", {}) or {}
