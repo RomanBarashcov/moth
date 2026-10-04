@@ -27,6 +27,7 @@ HEREDOC = re.compile(
     re.DOTALL,
 )
 MAX_DEPTH = 5
+SENSITIVE_VERBS = {"push", "merge"}
 UNVERIFIABLE = re.compile(r"[$`{}*?\[~]")
 GIT_BUILTINS = {
     "add", "am", "apply", "bisect", "blame", "branch", "cat-file", "checkout", "cherry-pick",
@@ -43,11 +44,15 @@ class Denied(Exception):
     pass
 
 
+def program(word):
+    return os.path.basename(word).lower()
+
+
 def drop_data_heredocs(command):
     def replace(match):
         line_start = command.rfind("\n", 0, match.start()) + 1
         feeder = strip_wrappers(command[line_start:match.start()].split())
-        runs_body = bool(feeder) and os.path.basename(feeder[0]) in SHELLS
+        runs_body = bool(feeder) and program(feeder[0]) in SHELLS
         body = f"\n{match.group('body')}" if runs_body else ""
         return f"{match.group('rest')}{body}\n"
 
@@ -99,7 +104,7 @@ def strip_wrappers(words):
     while words:
         if ASSIGNMENT.match(words[0]):
             words = words[1:]
-        elif os.path.basename(words[0]) in WRAPPERS:
+        elif program(words[0]) in WRAPPERS:
             words = words[1:]
             while words and words[0].startswith("-"):
                 takes_value = words[0] in WRAPPER_OPTS_WITH_VALUE
@@ -196,6 +201,8 @@ def check_git(words, cwd, depth):
     if i >= len(words):
         return
     sub, rest = words[i], words[i + 1:]
+    if UNVERIFIABLE.search(sub):
+        raise Denied("git subcommand uses shell expansion; name it literally")
     if sub == "push":
         check_push(rest, cwd)
         return
@@ -230,7 +237,9 @@ def check_simple(words, cwd, depth):
     words = strip_wrappers(words)
     if not words:
         return cwd
-    name = os.path.basename(words[0])
+    name = program(words[0])
+    if UNVERIFIABLE.search(name) and any(w.lower() in SENSITIVE_VERBS for w in words[1:]):
+        raise Denied("command name uses shell expansion; name the program literally")
 
     if name == "cd" and len(words) > 1:
         return os.path.join(cwd, os.path.expanduser(words[1]))

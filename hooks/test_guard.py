@@ -88,6 +88,18 @@ UNVERIFIABLE_DENIED = [
     "git push origin \\\nmain",
 ]
 
+EXPANDED_OR_CASED_DENIED = [
+    "X=push; git $X origin main",
+    "git \"$(echo push)\" origin main",
+    "g=git; $g push origin main",
+    "\"$GIT\" push origin main",
+    "GIT push origin main",
+    "Git push origin main",
+    "BASH -c \"git push origin main\"",
+    "SUDO git push origin main",
+    "GH pr merge 1",
+]
+
 ALIAS_DENIED = [
     "git p origin main",
     "git -c alias.q=push q origin main",
@@ -134,10 +146,11 @@ class GitPushRulesTest(unittest.TestCase):
                 self.assertTrue(is_denied(command, self.feature_repo))
 
     def test_unverifiable_targets_and_aliases_are_denied(self):
-        for command in UNVERIFIABLE_DENIED + ALIAS_DENIED:
+        for command in UNVERIFIABLE_DENIED + ALIAS_DENIED + EXPANDED_OR_CASED_DENIED:
             with self.subTest(command=command):
                 self.assertTrue(is_denied(command, self.feature_repo))
         self.assertFalse(is_denied("git p origin moth/ACME-123", self.feature_repo))
+        self.assertFalse(is_denied("$EDITOR notes.md", self.feature_repo))
 
     def test_heredoc_body_is_checked_only_when_a_shell_runs_it(self):
         for command in HEREDOC_DENIED:

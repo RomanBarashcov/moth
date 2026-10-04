@@ -63,6 +63,8 @@ Enforced by a hook (`hooks/guard.py`), not by trust:
 
 Test the hook: `python3 -m unittest discover -s hooks`
 
+⚠️ The hook is a safety net, not a sandbox. Give Moth read-only credentials for prod data first.
+
 ## Where things live
 
 ```
