@@ -1,0 +1,17 @@
+{
+  "name": "moth",
+  "description": "Autonomous bug fixing: takes a Linear/Jira ticket, reproduces it, fixes it test-first and opens a PR with re-runnable proof and a Blackbox run log.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Roman Barashcov"
+  },
+  "license": "MIT",
+  "keywords": [
+    "bugs",
+    "debugging",
+    "tdd",
+    "playwright",
+    "autonomous",
+    "workflow"
+  ]
+}

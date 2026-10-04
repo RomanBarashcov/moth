@@ -1,0 +1,67 @@
+system: acme
+
+tracker:
+  type: linear              # linear | jira
+  mcp: linear               # MCP server name used to read/comment on tickets
+  boards:                   # boards / teams / projects to watch
+    - ACME                  # confirmed
+  label: moth               # tickets with this label are queued for Moth
+  needs_info_label: needs-info
+
+repos:
+  service-a:
+    path: repos/service-a
+    language: go
+    run: make run
+    test: make test
+    test_one: go test ./... -run {name}
+  service-b:
+    path: repos/service-b
+    language: typescript
+    run: pnpm dev
+    test: pnpm test:run
+  web-app:
+    path: repos/web-app
+    language: react
+    run: pnpm dev
+    test: pnpm test:run
+    playwright_dir: e2e
+    e2e: pnpm test:e2e
+
+links:
+  - web-app -> service-a: REST /api/v1
+  - service-a -> service-b: events via queue `orders`
+
+environments:
+  local:
+    up: docker compose -f docker/compose.yaml up -d
+    down: docker compose -f docker/compose.yaml down -v
+    seed: make db-seed
+  staging:
+    read_only:
+      logs: { mcp: axiom }
+      metrics: { mcp: grafana }
+      errors: { mcp: sentry }
+  prod:
+    read_only:
+      logs: { mcp: axiom }
+      errors: { mcp: sentry }
+      data: { mcp: prod-postgres }   # use a read-only DB role
+
+evidence:
+  branch: moth-evidence     # orphan branch in each service repo; holds PR screenshots/videos, never merged
+  gif: true                 # convert Playwright videos to GIF for inline PR rendering (needs ffmpeg)
+
+guardrails:
+  max_turns: 150
+  timeout_minutes: 45
+  reproduce_attempts: 3
+  max_files: 10
+  max_open_prs: 3
+  concurrency: 1
+  bash_deny:                # extra commands the guard hook blocks
+    - pattern: "psql\\s+.*prod"
+      reason: prod DB only via the read-only MCP
+    - pattern: "kubectl\\s+.*--context[= ]prod"
+      reason: no kubectl against prod
+  write_verbs: default      # or a list overriding guard.py DEFAULT_WRITE_VERBS
