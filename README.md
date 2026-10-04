@@ -1,53 +1,123 @@
+<p align="center">
+  <img src="assets/moth-matrix.svg" alt="Moth: a moth drawn in falling green matrix glyphs" width="100%">
+</p>
+
 # Moth
 
-A Claude Code plugin that takes a bug ticket from Linear or Jira, reproduces it, fixes it test-first and opens a PR with re-runnable proof. Every run leaves a **Blackbox**: a log of where the workflow succeeded or broke.
+**Give it a bug ticket. Get back a PR with a fix and proof.**
 
-The name comes from the moth taped into the Harvard Mark II logbook in 1947 as the "first actual case of bug being found".
+A Claude Code plugin. It reproduces the bug, writes a failing test, fixes it, and opens a PR with before/after screenshots.
 
-## How it fits together
+## Start in 3 steps (~10 min)
+
+1. Make a workspace folder next to your code:
+   ```bash
+   mkdir acme-moth && cd acme-moth
+   ```
+2. Start Claude Code with the plugin and set up the workspace:
+   ```bash
+   claude --plugin-dir /path/to/moth
+   > /moth:moth-init
+   ```
+   It finds your repos, commands and tools. It asks only what it can't find.
+3. Fix one ticket:
+   ```bash
+   > /moth:moth-fix ACME-123
+   ```
+
+Config example: [`examples/system.yaml`](examples/system.yaml).
+
+## What you get in the PR
+
+- 🔴→🟢 **A test** that fails before the fix and passes after it.
+- 🎭 **A Playwright spec** you can re-run: `npx playwright test bugs/ACME-123.spec.ts --headed`.
+- 🖼️ **Before/after screenshots and GIFs** in the description.
+- 🧭 **A short report:** verdict, confidence, what a human needs to check.
+- 🔗 **A comment on the ticket** with the PR link.
+
+You review. You merge. Moth never merges.
+
+## How a run goes
 
 ```
-moth/                 ← this repo: the generic plugin
-acme-moth/            ← one workspace per system (not in this repo)
-  system.yaml         ← repos, environments, MCP servers, tracker, guardrails
-  repos/              ← service repos
-  runs/<ID>/          ← Blackbox for every run, success or failure
-  knowledge/          ← INDEX.md + one record per fixed bug
-  feedback/           ← INDEX.md + FB-NNN records: every proposal to improve Moth (problem → motivation → decision → output)
+ticket → reproduce → red test → fix → green test → screenshots → PR
 ```
 
-- Fix PRs go to the service repos.
-- Moth's own files (Blackbox, knowledge, raw media) stay in the workspace.
-- Before/after screenshots and GIFs for the PR description go to an orphan `moth-evidence` branch in the service repo. It shares no history with the code and is never merged, and the PR links to a pinned commit on it (`skills/moth-fix/scripts/collect-evidence.sh`).
+| Step | What Moth does |
+|---|---|
+| 1. Intake | Reads the ticket. Skips it if git already has a fix. Asks on the ticket if it's too vague. |
+| 2. Reproduce | Writes a failing test from the ticket, before reading the code. Stops after 3 tries. |
+| 3. Fix | Makes the smallest change that turns the test green. Runs all tests. |
+| 4. Proof | Runs the Playwright spec on the old code and the new code. Puts both in the PR. |
+| 5. Record | Writes a run log, a knowledge note, and any improvement ideas. |
 
-## Try it locally
+## Safety rules
 
-```bash
-mkdir acme-moth && cd acme-moth
-claude --plugin-dir /path/to/moth
-> /moth:moth-init          # detects repos, MCPs, boards; asks only what it cannot detect
-> /moth:moth-fix ACME-123  # fix one ticket
+Enforced by a hook (`hooks/guard.py`), not by trust:
+
+- ❌ No push to `main`/`master`. No force push. No merge.
+- ❌ No writes to staging or prod. Read-only logs and errors only.
+- 📝 Draft PR if the fix touches more than 10 files, a migration, or a public API.
+- ⏱️ Stops after ~45 min or 3 failed reproduce tries, and comments what it found.
+- 🔒 If the hook itself breaks, it blocks the command.
+
+Test the hook: `python3 -m unittest discover -s hooks`
+
+⚠️ The hook is a safety net, not a sandbox. Give Moth read-only credentials for prod data first.
+
+## Where things live
+
+```
+moth/          ← this repo: the plugin, the same for every project
+acme-moth/     ← your workspace, one per project
+  system.yaml    repos, commands, tools, rules
+  runs/          a log for every run, success or failure
+  knowledge/     one note per fixed bug
+  feedback/      every idea for improving Moth
 ```
 
-The config shape is in [`examples/system.yaml`](examples/system.yaml).
+Screenshots go to a separate `moth-evidence` branch. It is never merged, so no images end up in your code.
 
-## Guardrails
+## Plugins that help
 
-The `hooks/guard.py` `PreToolUse` hook is active only inside a workspace that has `.moth/guard.json`. Everywhere else it does nothing. It denies:
-- force pushes, pushes to main/master and `gh pr merge`. These are checked per sub-command, so `git push origin moth/X && gh pr create --base main` is allowed. Cases are in `hooks/test_guard.py`;
-- write-like tools (`create`, `update`, `delete`, `execute`...) on MCP servers listed as staging/prod read-only;
-- the extra regexes in `guardrails.bash_deny`.
+`moth-init` checks for these and gives install commands:
 
-It is the second line of defence. Use read-only credentials for prod data first.
+- `linear` or `atlassian`: read tickets
+- `playwright`: screenshots and videos
+- `superpowers`: TDD and debugging
+- Sentry, Axiom or Grafana MCP: read-only logs and errors
+- `ffmpeg`: GIFs in PRs (optional)
 
-## Recommended plugins
+## Improving Moth: the feedback chain
 
-`moth-init` checks for these and suggests install commands:
-- `linear` or `atlassian` (tracker)
-- `playwright` (evidence)
-- `superpowers` (TDD and debugging)
-- Sentry, Axiom and Grafana MCPs (read-only diagnostics)
+Every idea to improve Moth gets one file in `feedback/`. Ideas can come from you, a reviewer, a CI check, or Moth itself.
 
-## Status
+Each file answers 6 questions:
 
-v0.1: the `moth-init` and `moth-fix` skills plus the guard hook, run interactively. There is no harness yet.
+1. What went wrong?
+2. Why does it matter?
+3. What was proposed?
+4. What was decided?
+5. What changed?
+6. How do we know it works?
+
+Open `feedback/INDEX.md` to see all ideas and their status.
+
+## Why it exists
+
+AI writes code from the code it sees. If that code has bugs, AI copies them. Moth breaks the loop: every bug gets a test, a fix and a note, so the next session sees the right pattern.
+
+> **The name:** in 1947, engineers found a moth stuck in the Harvard Mark II computer. They taped it into the logbook as the *"first actual case of bug being found"*. Every Moth run is logged too.
+
+## What's next
+
+| Phase | What | Status |
+|---|---|---|
+| 1 | Ticket → PR | ✅ now |
+| 1.5 | Run unattended from a label queue (`claude -p`) | next |
+| 2 | Hunt bugs on a schedule, file tickets itself | later |
+| 3 | CLI and UI for teams | later |
+
+## License
+
+[MIT](LICENSE)

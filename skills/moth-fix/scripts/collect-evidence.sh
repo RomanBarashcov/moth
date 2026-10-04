@@ -13,9 +13,13 @@
 # markdown: prints a before/after table for the PR body from that base URL.
 set -euo pipefail
 
-slug() {
+USAGE_LINES='2,13p'
+GIF_FILTER='fps=8,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer'
+BROWSER_SUFFIX='-(chromium|firefox|webkit|Mobile-Chrome|Mobile-Safari)$'
+
+test_name() {
   local name
-  name=$(basename "$1" | sed -E 's/-(chromium|firefox|webkit|Mobile-Chrome|Mobile-Safari)$//')
+  name=$(basename "$1" | sed -E "s/$BROWSER_SUFFIX//")
   if [[ $name =~ -[0-9a-f]{5}-(.*)$ ]]; then
     name=$(sed -E 's/^-*[^-]*-+//' <<<"${BASH_REMATCH[1]}")
   fi
@@ -23,70 +27,76 @@ slug() {
 }
 
 pick_screenshot() {
-  ls "$1"/test-finished-*.png 2>/dev/null | tail -1 ||
-    ls "$1"/test-failed-*.png 2>/dev/null | tail -1 ||
-    ls "$1"/*.png 2>/dev/null | tail -1
+  local pattern match
+  for pattern in 'test-finished-*.png' 'test-failed-*.png' '*.png'; do
+    match=$(find "$1" -maxdepth 1 -name "$pattern" | sort | tail -1)
+    if [ -n "$match" ]; then
+      echo "$match"
+      return
+    fi
+  done
+}
+
+collect_phase() {
+  local phase=$1 src=$2 dest=$3 dir name png
+  for dir in "$src"/*/; do
+    [ -d "$dir" ] || continue
+    name="$phase-$(test_name "$dir")"
+    png=$(pick_screenshot "$dir")
+    [ -z "$png" ] || cp "$png" "$dest/$name.png"
+    [ -f "$dir/video.webm" ] || continue
+    cp "$dir/video.webm" "$dest/$name.webm"
+    if command -v ffmpeg >/dev/null; then
+      ffmpeg -loglevel error -y -i "$dir/video.webm" -vf "$GIF_FILTER" "$dest/$name.gif"
+    fi
+  done
 }
 
 collect() {
   local before=$1 after=$2 dest=$3
   mkdir -p "$dest"
-  for phase in before after; do
-    local src=$before
-    [ "$phase" = after ] && src=$after
-    for dir in "$src"/*/; do
-      [ -d "$dir" ] || continue
-      local name png
-      name=$(slug "$dir")
-      png=$(pick_screenshot "$dir" || true)
-      [ -n "$png" ] && cp "$png" "$dest/$phase-$name.png"
-      if [ -f "$dir/video.webm" ]; then
-        cp "$dir/video.webm" "$dest/$phase-$name.webm"
-        if command -v ffmpeg >/dev/null; then
-          ffmpeg -loglevel error -y -i "$dir/video.webm" \
-            -vf "fps=8,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer" \
-            "$dest/$phase-$name.gif"
-        fi
-      fi
-    done
-  done
+  collect_phase before "$before" "$dest"
+  collect_phase after "$after" "$dest"
   ls -1 "$dest"
 }
 
 markdown() {
-  local dest=$1 base=$2
+  local dest=$1 base=$2 png name video
+  local -a links=()
+  url() { echo "$base/$1?raw=true"; }
+  row() { echo "| $1 | ![before]($(url "before-$2.$3")) | ![after]($(url "after-$2.$3")) |"; }
+
   echo "| | Before (base) | After (fix) |"
   echo "|---|---|---|"
   for png in "$dest"/after-*.png; do
     [ -f "$png" ] || continue
-    local name=${png##*/after-}
+    name=${png##*/after-}
     name=${name%.png}
-    echo "| \`$name\` | ![before]($base/before-$name.png?raw=true) | ![after]($base/after-$name.png?raw=true) |"
-    if [ -f "$dest/after-$name.gif" ]; then
-      echo "| recording | ![before]($base/before-$name.gif?raw=true) | ![after]($base/after-$name.gif?raw=true) |"
-    fi
+    row "\`$name\`" "$name" png
+    [ ! -f "$dest/after-$name.gif" ] || row recording "$name" gif
   done
-  echo
-  local links=()
+
   for video in "$dest"/*.webm; do
     [ -f "$video" ] || continue
-    local file=${video##*/}
-    links+=("[${file%.webm}]($base/$file?raw=true)")
+    video=${video##*/}
+    links+=("[${video%.webm}]($(url "$video"))")
   done
   if [ ${#links[@]} -gt 0 ]; then
-    local IFS='·'
-    echo "Full videos: ${links[*]}"
+    echo
+    (IFS='·'; echo "Full videos: ${links[*]}")
   fi
 }
 
 publish() {
   local repo=$1 src=$2 ticket=$3 branch=${4:-moth-evidence}
+  local parent commit file index repo_name
   src=$(cd "$src" && pwd)
   cd "$repo"
   git fetch -q origin "$branch" 2>/dev/null || true
-  local parent index slug commit
   parent=$(git rev-parse -q --verify "refs/remotes/origin/$branch" || true)
+
   index=$(mktemp)
+  trap 'rm -f "$index"' RETURN
   export GIT_INDEX_FILE=$index
   if [ -n "$parent" ]; then git read-tree "$parent"; else git read-tree --empty; fi
   git rm -r -q --cached --ignore-unmatch -- "$ticket" >/dev/null
@@ -96,15 +106,15 @@ publish() {
   done
   commit=$(git commit-tree "$(git write-tree)" ${parent:+-p "$parent"} -m "evidence: $ticket")
   unset GIT_INDEX_FILE
-  rm -f "$index"
+
   git push -q origin "$commit:refs/heads/$branch"
-  slug=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-  echo "https://github.com/$slug/blob/$commit/$ticket"
+  repo_name=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+  echo "https://github.com/$repo_name/blob/$commit/$ticket"
 }
 
 case "${1:-}" in
   collect) shift; collect "$@" ;;
   markdown) shift; markdown "$@" ;;
   publish) shift; publish "$@" ;;
-  *) sed -n '2,16p' "$0"; exit 1 ;;
+  *) sed -n "$USAGE_LINES" "$0"; exit 1 ;;
 esac
