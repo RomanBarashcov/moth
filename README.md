@@ -4,123 +4,117 @@
 
 # Moth
 
-**A Claude Code plugin that takes a bug ticket, reproduces it, fixes it test-first and opens a PR with proof you can re-run.**
+**Give it a bug ticket. Get back a PR with a fix and proof.**
 
-Every run, whether it succeeds or fails, leaves a **Blackbox**: a log of where the workflow worked and where it broke. Every fix leaves a searchable **knowledge record**, so the next bug of the same kind is found faster.
+A Claude Code plugin. It reproduces the bug, writes a failing test, fixes it, and opens a PR with before/after screenshots.
 
-> On 9 September 1947, operators of the Harvard Mark II found a moth stuck in a relay and taped it into the logbook as the *"first actual case of bug being found"*. The first bug ever was recorded in a log. Every Moth run is too.
+## Start in 3 steps (~10 min)
 
-## Why
+1. Make a workspace folder next to your code:
+   ```bash
+   mkdir acme-moth && cd acme-moth
+   ```
+2. Start Claude Code with the plugin and set up the workspace:
+   ```bash
+   claude --plugin-dir /path/to/moth
+   > /moth:moth-init
+   ```
+   It finds your repos, commands and tools. It asks only what it can't find.
+3. Fix one ticket:
+   ```bash
+   > /moth:moth-fix ACME-123
+   ```
 
-Most projects have no bug-hunting automation. Code is written by hand without a repeatable workflow. When one engineer ships buggy code, the next engineer working with AI can ship more of it, because each AI session builds its context from the code that already exists, bugs included.
+Config example: [`examples/system.yaml`](examples/system.yaml).
 
-Moth automates the workflow a careful engineer follows by hand:
+## What you get in the PR
 
-1. **Investigate.** Decide whether a feature really works, capture video and screenshots, and put the context into the ticket.
-2. **Reproduce.** Trace the bug through logs, metrics, queues and caches, and look for the sibling bugs that live next to it.
-3. **Fix.** Write a failing test first, then the smallest fix, then a PR with proof for the team to review.
+- 🔴→🟢 **A test** that fails before the fix and passes after it.
+- 🎭 **A Playwright spec** you can re-run: `npx playwright test bugs/ACME-123.spec.ts --headed`.
+- 🖼️ **Before/after screenshots and GIFs** in the description.
+- 🧭 **A short report:** verdict, confidence, what a human needs to check.
+- 🔗 **A comment on the ticket** with the PR link.
 
-## What a Moth PR contains
+You review. You merge. Moth never merges.
 
-| | |
+## How a run goes
+
+```
+ticket → reproduce → red test → fix → green test → screenshots → PR
+```
+
+| Step | What Moth does |
 |---|---|
-| 🔴→🟢 | A test that fails before the fix and passes after it (unit, integration or e2e, whichever is lowest and still shows the bug). |
-| 🎭 | A Playwright spec you can re-run: `npx playwright test bugs/ACME-123.spec.ts --headed`. |
-| 🖼️ | **Before/after screenshots and GIFs** in the description for UI bugs. For backend bugs, red/green output and a request/response or log diff. |
-| 🧭 | A Blackbox summary: verdict, confidence, stages reached, a "needs human input" checklist and how the bug was reproduced. |
-| 🔗 | A comment on the ticket linking the PR, plus a knowledge record in the workspace. |
+| 1. Intake | Reads the ticket. Skips it if git already has a fix. Asks on the ticket if it's too vague. |
+| 2. Reproduce | Writes a failing test from the ticket, before reading the code. Stops after 3 tries. |
+| 3. Fix | Makes the smallest change that turns the test green. Runs all tests. |
+| 4. Proof | Runs the Playwright spec on the old code and the new code. Puts both in the PR. |
+| 5. Record | Writes a run log, a knowledge note, and any improvement ideas. |
 
-Media is published to an orphan `moth-evidence` branch in the service repo. It shares no history with the code and is never merged; the PR links to a pinned commit on it.
+## Safety rules
 
-## How it works
+Enforced by a hook (`hooks/guard.py`), not by trust:
+
+- ❌ No push to `main`/`master`. No force push. No merge.
+- ❌ No writes to staging or prod. Read-only logs and errors only.
+- 📝 Draft PR if the fix touches more than 10 files, a migration, or a public API.
+- ⏱️ Stops after ~45 min or 3 failed reproduce tries, and comments what it found.
+- 🔒 If the hook itself breaks, it blocks the command.
+
+Test the hook: `python3 -m unittest discover -s hooks`
+
+## Where things live
 
 ```
-ticket ─▶ intake ─▶ env ─▶ reproduce ─▶ fix ─▶ evidence ─▶ PR ─▶ record
-            │                   │                                 │
-            ├ skip already-     ├ red test written from the       ├ Blackbox (always)
-            │ fixed tickets     │ ticket, before reading code     ├ knowledge record
-            └ vague? ask on     └ 3 attempts, then stop           └ feedback chain
-              the ticket          with a category
+moth/          ← this repo: the plugin, the same for every project
+acme-moth/     ← your workspace, one per project
+  system.yaml    repos, commands, tools, rules
+  runs/          a log for every run, success or failure
+  knowledge/     one note per fixed bug
+  feedback/      every idea for improving Moth
 ```
 
-Moth is two layers:
+Screenshots go to a separate `moth-evidence` branch. It is never merged, so no images end up in your code.
 
-```
-moth/                 ← this repo: the generic plugin, the same for every system
-  skills/               moth-init, moth-fix (+ templates, evidence script)
-  hooks/                guard.py: PreToolUse guardrails
+## Plugins that help
 
-acme-moth/            ← one workspace per system (not in this repo)
-  system.yaml           repos, commands, environments, MCP servers, tracker, guardrails
-  runs/<ID>/            Blackbox for every run, success or failure
-  knowledge/            INDEX.md + one record per fixed bug (progressive disclosure)
-  feedback/             INDEX.md + FB-NNN: every proposal to improve Moth
-```
+`moth-init` checks for these and gives install commands:
 
-The plugin knows nothing about any concrete project; everything specific lives in the workspace's `system.yaml`. A new system means a new `<name>-moth/` workspace, and the plugin stays the same.
+- `linear` or `atlassian`: read tickets
+- `playwright`: screenshots and videos
+- `superpowers`: TDD and debugging
+- Sentry, Axiom or Grafana MCP: read-only logs and errors
+- `ffmpeg`: GIFs in PRs (optional)
 
-- **Reproduction** runs locally, in a git worktree per bug, against the local stack.
-- **Staging and prod are read-only**: logs, metrics and errors only, through MCP servers marked read-only.
-- **Knowledge** lives in the workspace, not in a service repo, because cross-service bugs are the valuable ones. The agent reads `knowledge/INDEX.md` before it investigates.
+## Improving Moth: the feedback chain
 
-## Quick start
+Every idea to improve Moth gets one file in `feedback/`. Ideas can come from you, a reviewer, a CI check, or Moth itself.
 
-```bash
-mkdir acme-moth && cd acme-moth
-claude --plugin-dir /path/to/moth
-> /moth:moth-init          # detects repos, commands, MCP servers, boards; asks only what it can't detect
-> /moth:moth-fix ACME-123  # fix one ticket end to end
-```
+Each file answers 6 questions:
 
-The config shape is in [`examples/system.yaml`](examples/system.yaml). `moth-init` checks for these plugins and suggests install commands:
-- `linear` or `atlassian` (tracker)
-- `playwright` (evidence)
-- `superpowers` (TDD and debugging)
-- Sentry, Axiom or Grafana MCPs (read-only diagnostics)
-- `ffmpeg` (GIFs in PRs, optional)
+1. What went wrong?
+2. Why does it matter?
+3. What was proposed?
+4. What was decided?
+5. What changed?
+6. How do we know it works?
 
-## Guardrails
+Open `feedback/INDEX.md` to see all ideas and their status.
 
-| Limit | Default | On hit |
+## Why it exists
+
+AI writes code from the code it sees. If that code has bugs, AI copies them. Moth breaks the loop: every bug gets a test, a fix and a note, so the next session sees the right pattern.
+
+> **The name:** in 1947, engineers found a moth stuck in the Harvard Mark II computer. They taped it into the logbook as the *"first actual case of bug being found"*. Every Moth run is logged too.
+
+## What's next
+
+| Phase | What | Status |
 |---|---|---|
-| Effort per bug | max turns + ~45 min | stop, comment findings on the ticket |
-| Can't reproduce | 3 attempts | comment hypotheses + `needs-info` label |
-| Fix touches > 10 files, a migration or a public API | — | open the PR as **draft** |
-| Staging / prod | read-only | denied by the guard hook |
-| Git | no force push, no push to main/master, no merge | humans merge |
-
-`hooks/guard.py` enforces these as a `PreToolUse` hook, only inside a workspace that has `.moth/guard.json`. It parses each shell command with `shlex`, unwraps `sudo`/`env`/`bash -c`/`eval`/`$(…)`, resolves the current branch for a bare `git push`, and **fails closed**: a broken `guard.json` or an internal error denies the command. Cases are in [`hooks/test_guard.py`](hooks/test_guard.py) (`python3 -m unittest discover -s hooks`).
-
-It is the second line of defence. Use read-only credentials for prod data first.
-
-## The feedback chain
-
-Moth improves through the proposals people and checks make while it works: the user mid-run, a PR reviewer, a CI check, a security review, or Moth itself when it hits a gap. Each proposal becomes an `FB-NNN` record with its **problem, motivation, proposal, decision, output and verification**, linked to the run where it came up. Reading `feedback/INDEX.md` shows what was proposed, what was decided and what changed in the plugin.
-
-A failure that leaves no trail is a bug in Moth.
-
-## Roadmap
-
-- **Phase 1, ticket → PR** (now): fully autonomous up to the PR; a human only reviews.
-- **Harness**: a script over `claude -p` (`--output-format stream-json`, `--max-turns`, `--resume`) to process the `moth` label queue unattended.
-- **Phase 2, autonomous hunting**: on a schedule, explore the app like a user, record video and file tickets that feed Phase 1.
-- **Phase 3, product**: CLI and UI for engineers, a webhook listener for instant intake.
-
-## Key decisions
-
-| Decision | Instead of |
-|---|---|
-| Plugin + per-system workspace; knowledge in the workspace | knowledge per service repo or only in the tracker |
-| Fully autonomous to the PR; humans review and merge | a checkpoint after the red test |
-| Local isolated repro + read-only staging/prod diagnostics | shared staging only |
-| Playwright now, browser MCP for exploratory hunting later | AppleScript / computer-use |
-| A Blackbox for every run, success or failure | knowledge records only (failures lost) |
-| Guardrails in a hook, not in skill text | rules the model could talk itself out of |
-| Evidence on a never-merged branch, shown in the PR | media committed to the code |
-
-## Status
-
-v0.2: `moth-init`, `moth-fix`, the evidence script and the guard hook, run interactively in Claude Code. The `claude -p` harness is next.
+| 1 | Ticket → PR | ✅ now |
+| 1.5 | Run unattended from a label queue (`claude -p`) | next |
+| 2 | Hunt bugs on a schedule, file tickets itself | later |
+| 3 | CLI and UI for teams | later |
 
 ## License
 
