@@ -15,7 +15,6 @@ Exit codes: 0 all good, 1 below min, 2 unreadable file or no usable results.
 """
 import argparse
 import json
-import math
 import re
 import sys
 
@@ -62,9 +61,11 @@ def score(ok, total):
     return ok / total if total else 0.0
 
 
-def fmt(value):
-    # floor so 0.899 never prints as 0.90 next to a 0.90 floor
-    return f"{math.floor(value * 100) / 100:.2f}"
+def fmt(ok, total):
+    # floor so 0.899 never prints as 0.90 next to a 0.90 floor; integer math
+    # so 29/50 prints 0.58, not 0.57 from 0.58 * 100 == 57.99999999999999
+    hundredths = ok * 100 // total if total else 0
+    return f"{hundredths // 100}.{hundredths % 100:02d}"
 
 
 def sort_key(name):
@@ -75,13 +76,18 @@ def summarize(report, minimum):
     scenarios = {}
     failures = []
     for scenario, variation, name, passed, project, error, title in trajectories(report):
-        s = scenarios.setdefault(scenario, {"name": name, "ok": 0, "total": 0, "vars": {}})
+        s = scenarios.setdefault(scenario, {"name": name, "ok": 0, "total": 0, "vars": {}, "runs": {}})
         v = s["vars"].setdefault(variation, [0, 0])
+        # flakiness is per browser: a variation that always fails in one
+        # browser and always passes in another is broken there, not flaky
+        r = s["runs"].setdefault((variation, project), [0, 0])
         s["total"] += 1
         v[1] += 1
+        r[1] += 1
         if passed:
             s["ok"] += 1
             v[0] += 1
+            r[0] += 1
         else:
             failures.append((title, project, error))
 
@@ -94,7 +100,7 @@ def summarize(report, minimum):
     good = overall >= minimum and not below
 
     lines = [
-        f"**Satisfaction: {fmt(overall)} ({ok}/{total})** — min {minimum:.2f} {'✅' if good else '❌'}",
+        f"**Satisfaction: {fmt(ok, total)} ({ok}/{total})** — min {minimum:.2f} {'✅' if good else '❌'}",
         "",
         "| Scenario | Satisfied | Variations | Flaky |",
         "|---|---|---|---|",
@@ -105,13 +111,13 @@ def summarize(report, minimum):
             f"{v} {p}/{t}" if v else f"{p}/{t}"
             for v, (p, t) in sorted(s["vars"].items(), key=lambda kv: int(kv[0][1:] or 0))
         )
-        flaky = any(0 < p < t for p, t in s["vars"].values())
+        flaky = any(0 < p < t for p, t in s["runs"].values())
         label = f"{key} {s['name']}".strip()
         lines.append(f"| {label} | {s['ok']}/{s['total']} | {variations} | {'yes' if flaky else 'no'} |")
 
     if below:
         lines += ["", "Below min: " + ", ".join(
-            f"{k} ({fmt(score(scenarios[k]['ok'], scenarios[k]['total']))})"
+            f"{k} ({fmt(scenarios[k]['ok'], scenarios[k]['total'])})"
             for k in sorted(below, key=sort_key))]
     if failures:
         lines += ["", f"Failing trajectories ({len(failures)}):"]

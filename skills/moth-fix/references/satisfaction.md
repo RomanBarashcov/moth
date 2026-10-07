@@ -21,7 +21,7 @@ Score it with `scripts/satisfaction.py <report.json> --min 0.9`. Exit 0 ok, 1 be
 - **Satisfaction** line: passing / total trajectories, and ✅ or ❌ against the floor.
 - **Satisfied**: the same per scenario. Skipped runs are not counted.
 - **Variations**: the split per variation. `v2 0/3` means the fix misses that case.
-- **Flaky**: yes if one variation both passed and failed.
+- **Flaky**: yes if one variation both passed and failed in the same browser. Always failing in one browser and passing in another is a browser-specific bug, not flake.
 - **Below min**: scenarios under the floor. One broken scenario fails the run even when the overall score is fine.
 
 ## Defaults

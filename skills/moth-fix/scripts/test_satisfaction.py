@@ -75,6 +75,18 @@ class SatisfactionTest(unittest.TestCase):
         self.assertIn("| S2 checkout | 3/4 | v1 3/4 | yes |", r.stdout)
         self.assertIn("- S2 [v1] checkout (firefox): Timeout 30000ms", r.stdout)
 
+    def test_browser_specific_failure_is_not_flaky(self):
+        s = {"title": "S1 [v1] login", "tests": [
+            {"projectName": "chromium", "results": [result("passed"), result("passed")]},
+            {"projectName": "firefox", "results": [result("failed", "x"), result("failed", "x")]},
+        ]}
+        r = run(report(s), "--min", "0.5")
+        self.assertIn("| S1 login | 2/4 | v1 2/4 | no |", r.stdout)
+
+    def test_score_floored_exactly(self):
+        r = run(report(spec("S1 [v1] x", *["passed"] * 29, *["failed"] * 21)), "--min", "0.5")
+        self.assertIn("**Satisfaction: 0.58 (29/50)**", r.stdout)
+
     def test_skipped_excluded(self):
         r = run(report(spec("S1 [v1] login", "passed", "skipped", "passed")))
         self.assertEqual(r.returncode, 0)

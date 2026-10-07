@@ -19,16 +19,7 @@
 | recording | ![now](<BASE>/after-<test>.gif?raw=true) |
 
 ## Independent verification
-<!-- The block returned by the moth-verifier agent, pasted as is. -->
-**Verdict:** ✅ satisfied | ❌ not satisfied | ⚠️ inconclusive (<reason>)
-**Satisfaction:** <score> (min <min>)
-
-| Scenario | Then | Satisfaction | Judge |
-|---|---|---|---|
-| S1 <title> | <Then line> | <score> | satisfied / not satisfied / can't tell |
-
-**Judge notes**
-- S1: <one line: what the screenshots show>
+<!-- The block returned by the moth-verifier agent, pasted here as is (its format is defined in agents/moth-verifier.md). -->
 
 ## If broken
 - Failing check: <name>

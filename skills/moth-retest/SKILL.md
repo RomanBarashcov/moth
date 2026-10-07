@@ -49,10 +49,11 @@ Let `<STAMP>` be the current time as `YYYYMMDD-HHMM`.
 6. **Look at every screenshot.** It must show the expected behaviour, not a blank or loading page. If it doesn't, add a `page.screenshot()` at the moment that proves it, and re-run.
 
 ### 4. Independent verification
-1. If `.moth/scenarios/<TICKET-ID>/scenarios.md` doesn't exist (e.g. a human fixed it), spawn the `moth-scenario-writer` agent first, with the ticket ID and the project root. Say so in the report.
-2. Spawn the `moth-verifier` agent with the ticket ID, the project root, each worktree path and its SHA from step 2, the running stack, and the path of the `moth-fix` skill's `scripts/` directory.
-3. Keep the **Independent verification** block it returns for the report.
-4. Never read or edit `.moth/scenarios/` yourself.
+1. Spawn the `moth-scenario-writer` agent with the ticket ID and the project root. It returns `exists` when the scenarios are already there; any other answer means they were written just now (e.g. a human fixed it), so say so in the report.
+2. The verifier refuses a dirty worktree (`wrong-commit`). Delete any spec you wrote in step 3.3 and undo any edit from step 3.6, so `git -C <worktree> status --porcelain` is empty.
+3. Spawn the `moth-verifier` agent with the ticket ID, the project root, each worktree path and its SHA from step 2, the running stack, and the path of the `moth-fix` skill's `scripts/` directory.
+4. Keep the **Independent verification** block it returns for the report.
+5. Never read or edit `.moth/scenarios/` yourself.
 
 ### 5. Verdict
 - ✅ **works**: every regression test and spec passes, the screenshots show the expected behaviour, **and** the verifier is ✅ satisfied.
@@ -74,7 +75,7 @@ Let `<STAMP>` be the current time as `YYYYMMDD-HHMM`.
 2. On ❌, don't reopen the ticket or change its status. Suggest `/moth:moth-fix <TICKET-ID>`, and link this report as the starting point.
 
 ### 8. Clean up
-Stop the local stack, remove the worktrees (any spec written in step 3.3 goes with them) and `rm -rf "$SCRATCH"`.
+Stop the local stack, remove the worktrees and `rm -rf "$SCRATCH"`.
 
 ## Hard rules
 

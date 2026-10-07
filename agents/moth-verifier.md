@@ -1,6 +1,6 @@
 ---
 name: moth-verifier
-description: Use after a Moth fix is committed (or when retesting a fix) to judge it independently. Runs the ticket's holdout scenarios from .moth/scenarios/<TICKET-ID>/ as throwaway Playwright tests against the running local stack, scores satisfaction, looks at every screenshot, and returns an "Independent verification" block. Has no fix context. Never changes product code or tests.
+description: Use after a Moth fix is committed (or when retesting a fix) to judge it independently. Runs the ticket's holdout scenarios from .moth/scenarios/<TICKET-ID>/ as throwaway Playwright tests against the running local stack, scores satisfaction, looks at every screenshot, and returns an Independent verification block. Has no fix context. Never changes product code or tests.
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -53,8 +53,8 @@ Keep its markdown table. Exit `0`: score ≥ min. Exit `1`: below. Exit `2`: no 
 ### 5. Judge
 1. **Look at the `then.png` of every scenario × variation**, at least one repeat each. Open the video when a screenshot is unclear.
 2. For each scenario, decide one of:
-   - **satisfied**: every variation's screenshot shows the Then outcome,
-   - **not satisfied**: a test failed, or a passing test's screenshot doesn't show the Then outcome (blank page, spinner, old error, wrong value),
+   - **satisfied**: the scenario's satisfaction is ≥ min and every variation's passing screenshot shows the Then outcome,
+   - **not satisfied**: the scenario's satisfaction is below min (`satisfaction.py` lists it under "Below min"), or a passing test's screenshot doesn't show the Then outcome (blank page, spinner, old error, wrong value). A few failed trajectories within the floor are not enough on their own; mention them in the note,
    - **can't tell**: the screenshot doesn't show enough to decide.
 3. Write one line why. Describe what you saw, not the variation's data.
 4. Overall verdict:
@@ -68,10 +68,9 @@ Keep its markdown table. Exit `0`: score ≥ min. Exit `1`: below. Exit `2`: no 
 
 ## Output
 
-Return only this block. It goes into the PR as is, so it must not leak the scenarios: no variation data, no test code, no selectors.
+Return only this block, with no heading of your own: the caller pastes it as is under its own "Independent verification" heading, in the PR or the retest report. It must not leak the scenarios: no variation data, no test code, no selectors.
 
 ```markdown
-## Independent verification
 **Verdict:** ✅ satisfied | ❌ not satisfied | ⚠️ inconclusive (<reason>)
 **Satisfaction:** <score> (min <min>, <repeats> repeats per variation)
 **Checked:** `<repo>@<short sha>`, one per repo
@@ -80,7 +79,7 @@ Return only this block. It goes into the PR as is, so it must not leak the scena
 |---|---|---|---|
 | S1 <title> | <Then line> | <score> | satisfied / not satisfied / can't tell |
 
-### Judge notes
+**Judge notes**
 - S1: <one line: what the screenshots show>
 ```
 

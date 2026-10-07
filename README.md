@@ -27,7 +27,7 @@ A Claude Code plugin. It reproduces the bug, writes a failing test, fixes it, an
    > /moth:moth-fix ACME-123
    ```
 
-Update: `claude plugin marketplace update moth`. Hacking on Moth itself: `claude --plugin-dir .` from this repo.
+Update: `claude plugin marketplace update moth`, then `claude plugin update moth@moth` and restart Claude Code. Hacking on Moth itself: `claude --plugin-dir .` from this repo.
 
 Config example: [`examples/system.yaml`](examples/system.yaml).
 

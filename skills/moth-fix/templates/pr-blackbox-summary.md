@@ -23,17 +23,7 @@ Fixes <TICKET-URL>
 | recording | ![before](<BASE>/before-<test>.gif?raw=true) | ![after](<BASE>/after-<test>.gif?raw=true) |
 
 ### Independent verification
-<!-- The block returned by the moth-verifier agent, pasted as is. Holdout scenarios were written from the ticket only, by an agent that never saw the code; the fixer never saw them. -->
-**Verdict:** ✅ satisfied | ❌ not satisfied | ⚠️ inconclusive (<reason>)
-**Satisfaction:** <score> (min <min>, <repeats> repeats per variation)
-**Checked:** `<repo>@<short sha>`
-
-| Scenario | Then | Satisfaction | Judge |
-|---|---|---|---|
-| S1 <title> | <Then line> | <score> | satisfied / not satisfied / can't tell |
-
-**Judge notes**
-- S1: <one line: what the screenshots show>
+<!-- The block returned by the moth-verifier agent, pasted here as is (its format is defined in agents/moth-verifier.md). Holdout scenarios were written from the ticket only, by an agent that never saw the code; the fixer never saw them. -->
 
 ### Root cause
 <one or two sentences>
