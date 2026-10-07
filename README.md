@@ -41,6 +41,20 @@ Config example: [`examples/system.yaml`](examples/system.yaml).
 
 You review. You merge. Moth never merges.
 
+## Retest after the fix
+
+```bash
+> /moth:moth-retest ACME-123
+```
+
+Re-runs the bug's test and Playwright spec on the merged code (or the open PR) and the full test suites, then writes a report with fresh screenshots:
+
+- ✅ **works**, ❌ **broken** (with the first error), or ⚠️ **inconclusive** (with what's missing).
+- The exact commit it checked, so the proof can't go stale silently.
+- Works for human fixes too: no spec, so it writes a throwaway one from the ticket.
+
+Report: `.moth/runs/ACME-123/retest-<time>.md`. Add `--post` to put it on the ticket, `--on <branch|sha|PR#>` to pick the code.
+
 ## How a run goes
 
 ```
