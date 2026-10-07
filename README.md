@@ -69,7 +69,7 @@ The report shows up in the chat. Add `--post` to put it on the ticket, `--on <br
 ## How a run goes
 
 ```mermaid
-flowchart LR
+flowchart TD
     T([🎫 Ticket]) --> I{Clear what<br/>should happen?}
     I -- no --> Q[❓ Ask on the ticket]
 
