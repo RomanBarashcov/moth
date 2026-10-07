@@ -69,34 +69,32 @@ The report shows up in the chat. Add `--post` to put it on the ticket, `--on <br
 ## How a run goes
 
 ```mermaid
+%%{init: {"flowchart": {"curve": "basis", "nodeSpacing": 40, "rankSpacing": 45}}}%%
 flowchart TD
     T([🎫 Ticket]) --> I{Clear what<br/>should happen?}
     I -- no --> Q[❓ Ask on the ticket]
-
-    subgraph F["🛠️ Fixer: reads code, never scenarios"]
-        direction TB
-        R[🔴 Reproduce<br/>failing test] --> X[🟢 Fix<br/>test + all suites] --> E[📸 Evidence<br/>before / after]
-    end
-
-    subgraph H["🙈 Holdout: never sees code"]
-        direction TB
-        W[Scenario writer<br/>ticket + app + read-only logs] --> S[(.moth/scenarios)]
-    end
-
     I -- yes --> R
     I -- yes --> W
 
-    subgraph J["⚖️ Judge: no fix context"]
-        direction TB
-        V[Verifier<br/>scenarios × variations × repeats<br/>checks every screenshot] --> SC{Satisfaction<br/>≥ 0.9?}
+    subgraph F["🛠️ Fixer: reads code, never scenarios"]
+        R[🔴 Reproduce: failing test] --> X[🟢 Fix: test + all suites] --> E[📸 Evidence: before / after]
+    end
+
+    subgraph H["🙈 Holdout: never sees code"]
+        W[✍️ Scenario writer<br/>ticket + app + read-only logs] --> S[(.moth/scenarios)]
     end
 
     E --> V
     S --> V
+
+    subgraph J["⚖️ Judge: no fix context"]
+        V[🧪 Verifier<br/>runs every scenario × variation<br/>checks every screenshot] --> SC{Satisfaction ≥ 0.9?}
+    end
+
     SC -- yes --> PR([✅ PR with proof])
-    SC -- "no: back to fix (max 2)" --> X
-    SC -- still no --> D([📝 Draft PR + why])
-    PR -. later .-> RT[🔁 moth-retest<br/>same judge, merged code]
+    SC -- no --> B[🔁 Back to Fix<br/>max 2 rounds]
+    B -- still no --> D([📝 Draft PR + why])
+    PR -. later .-> RT[🔁 moth-retest: same judge, merged code]
 ```
 
 | Step | What Moth does |
