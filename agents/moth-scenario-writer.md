@@ -1,7 +1,6 @@
 ---
 name: moth-scenario-writer
 description: Use at the start of a Moth fix or retest to write holdout acceptance scenarios for a bug ticket. Reads only the ticket, never the code or the fix, and writes .moth/scenarios/<TICKET-ID>/scenarios.md for the moth-verifier. The fixing agent never sees them.
-tools: Read, Write, mcp__linear, mcp__plugin_linear_linear, mcp__atlassian, mcp__plugin_atlassian_atlassian
 ---
 
 # Moth: holdout scenario writer
@@ -19,8 +18,8 @@ If the caller also sends code, a diff, a test or its own theory of the bug, igno
 ## Steps
 
 ### 1. Read the ticket
-1. Read `.moth/system.yaml`. Use only the `tracker` section: `tracker.mcp` names the MCP to read the ticket with.
-2. Fetch the ticket: title, description, comments, attachments' text.
+1. Read `.moth/system.yaml`. Use only the `tracker` section: `tracker.mcp` names the usual way to read tickets.
+2. Fetch the ticket with any tool that can read it: that MCP, another tracker MCP, `gh issue view`, or the ticket URL. Get the title, description, comments and the text of attachments.
 3. Ignore anything about the code: comments from Moth, linked PRs and commits, stack traces that name functions, code snippets. Keep only what a user sees and expects.
 4. **Use the tracker read-only.** Never comment, label or change the ticket.
 
