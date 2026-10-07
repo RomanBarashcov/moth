@@ -28,6 +28,7 @@ HEREDOC = re.compile(
     re.DOTALL,
 )
 MAX_DEPTH = 5
+EXTGLOB_DOT = re.compile(r"(^|[\s/'\"=])\.[^\s/]*[?*+@!]\(")
 BRACE = re.compile(r"\{([^{}]*,[^{}]*)\}")
 # Plugin agents arrive as "<plugin>:<agent>"; a bare name could be any user or project agent.
 HOLDOUT_AGENTS = {"moth:moth-scenario-writer", "moth:moth-verifier"}
@@ -78,6 +79,8 @@ def tokenize(command):
     try:
         return _lex(text)
     except ValueError:
+        if holdout_dir:
+            raise Denied("unbalanced quotes; can't check this command against the holdout")
         tokens = []
         for line in text.split("\n"):
             try:
@@ -255,8 +258,11 @@ def check_holdout_text(text):
 
 
 def expand_braces(word, limit=64):
+    """Expands {a,b} like the shell; returns None past the limit so the caller fails closed."""
     words = [word]
-    while any(BRACE.search(w) for w in words) and len(words) < limit:
+    while any(BRACE.search(w) for w in words):
+        if len(words) > limit:
+            return None
         expanded = []
         for w in words:
             m = BRACE.search(w)
@@ -274,11 +280,14 @@ def may_expand_to_moth(word):
     Like the shell, a wildcard never matches the leading dot, so only parts that start
     with a literal "." can reach .moth; src/**/*.go stays allowed.
     """
-    if not re.search(r"[*?\[{]", word):
+    if not re.search(r"[*?\[{(]", word):
         return False
-    for candidate in expand_braces(word.casefold()):
+    candidates = expand_braces(word.casefold())
+    if candidates is None:
+        return True
+    for candidate in candidates:
         for part in candidate.split("/"):
-            if part.startswith(".") and fnmatch.fnmatchcase(".moth", part):
+            if part.startswith(".") and ("(" in part or fnmatch.fnmatchcase(".moth", part)):
                 return True
     return False
 
@@ -405,6 +414,8 @@ def check_bash(command, guard, cwd=None):
             check_holdout_text(command)
             if "$'" in command:
                 raise Denied("$'...' quoting can hide a .moth path; write the path literally")
+            if EXTGLOB_DOT.search(command):
+                raise Denied("an extglob after a dot can match .moth; write the path literally")
         check_command(command, cwd or os.getcwd())
     except Denied as denied:
         deny(str(denied))
