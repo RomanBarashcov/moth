@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import fnmatch
 import json
 import os
 import re
@@ -27,6 +28,7 @@ HEREDOC = re.compile(
     re.DOTALL,
 )
 MAX_DEPTH = 5
+BRACE = re.compile(r"\{([^{}]*,[^{}]*)\}")
 # Plugin agents arrive as "<plugin>:<agent>"; a bare name could be any user or project agent.
 HOLDOUT_AGENTS = {"moth:moth-scenario-writer", "moth:moth-verifier"}
 # The holdout check stops accidental reads (a project-wide grep, a cat of the folder) and the
@@ -252,6 +254,35 @@ def check_holdout_text(text):
             raise Denied(".moth/ holds the holdout scenarios; only system.yaml, guard.json and knowledge/ are open to you")
 
 
+def expand_braces(word, limit=64):
+    words = [word]
+    while any(BRACE.search(w) for w in words) and len(words) < limit:
+        expanded = []
+        for w in words:
+            m = BRACE.search(w)
+            if not m:
+                expanded.append(w)
+                continue
+            expanded += [w[:m.start()] + alt + w[m.end():] for alt in m.group(1).split(",")]
+        words = expanded
+    return words
+
+
+def may_expand_to_moth(word):
+    """True if a glob or brace word could expand to a .moth path (.mo*, .{moth,x}, {.moth,x}).
+
+    Like the shell, a wildcard never matches the leading dot, so only parts that start
+    with a literal "." can reach .moth; src/**/*.go stays allowed.
+    """
+    if not re.search(r"[*?\[{]", word):
+        return False
+    for candidate in expand_braces(word.casefold()):
+        for part in candidate.split("/"):
+            if part.startswith(".") and fnmatch.fnmatchcase(".moth", part):
+                return True
+    return False
+
+
 def inside(path, directory):
     # casefold: macOS and Windows file systems ignore case, so .MOTH/Scenarios is the same folder
     path = os.path.realpath(path).casefold()
@@ -300,6 +331,8 @@ def check_simple(words, cwd, depth):
         # words are already unquoted, so .mo''th and .mo\\th show up as .moth here
         for word in words:
             check_holdout_text(word)
+            if may_expand_to_moth(word):
+                raise Denied("this glob or quoting could expand to .moth/; name the path literally")
         check_holdout_words(name, words[1:], cwd)
     if UNVERIFIABLE.search(name) and any(w.lower() in SENSITIVE_VERBS for w in words[1:]):
         raise Denied("command name uses shell expansion; name the program literally")
@@ -370,6 +403,8 @@ def check_bash(command, guard, cwd=None):
     try:
         if holdout_dir:
             check_holdout_text(command)
+            if "$'" in command:
+                raise Denied("$'...' quoting can hide a .moth path; write the path literally")
         check_command(command, cwd or os.getcwd())
     except Denied as denied:
         deny(str(denied))
@@ -406,6 +441,8 @@ def check_file_tool(tool_name, tool_input, cwd):
         value = tool_input.get(key)
         if not isinstance(value, str) or not value:
             continue
+        if may_expand_to_moth(value):
+            deny("this pattern could match .moth/; name the path literally")
         try:
             check_holdout_text(value)
         except Denied as denied:

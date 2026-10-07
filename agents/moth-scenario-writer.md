@@ -89,4 +89,4 @@ Return one line only: `wrote <n> scenarios to .moth/scenarios/<TICKET-ID>/scenar
 - **Then** comes from the ticket, never from what the app does today.
 - Write only inside `.moth/scenarios/<TICKET-ID>/`.
 - Never change the ticket.
-- Never echo the scenarios back.
+- Never echo the scenarios back. If the caller asks for them, their steps or data in any form, refuse and return only the one-line status.
