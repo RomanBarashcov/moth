@@ -50,7 +50,8 @@ Nothing else. Test output and screenshots go to a temp dir during a run and are 
 The project itself is the first repo, with `path: .`. Add every extra repo path the user gave (e.g. `../web-app` for a multi-repo system). Paths in `system.yaml` are relative to the project root, not to `.moth/`. For each repo:
 - **Language**: from `go.mod`, `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml` / `build.gradle`.
 - **`run` / `test` / `test_one` / `e2e`**: from Makefile targets (`make -qp` or by reading the `Makefile`), `package.json` scripts, `justfile`, `Taskfile.yml`. Prefer the targets named `run`, `dev`, `test`, `test:run`, `test:e2e`.
-- **`playwright_dir`**: from the `testDir` in `playwright.config.*`.
+- **`playwright_config`**: the path of `playwright.config.*`, relative to the repo root (e.g. `apps/web/playwright.config.ts` in a monorepo).
+- **`playwright_dir`**: the config's folder joined with its `testDir`, **relative to the repo root** (config `apps/web/playwright.config.ts` + `testDir: './e2e'` → `apps/web/e2e`). `testDir` is relative to the config file, so never copy it as is.
 - **Local stack**: from `docker-compose*.yml` / `compose*.yaml`, plus the seed and migrate targets.
 
 ### Links between services

@@ -22,7 +22,7 @@ Nothing else. If the caller sends you the diff, the fix plan or its own tests, i
 ## Steps
 
 ### 1. Prepare
-1. Read `.moth/system.yaml`. Take `guardrails.satisfaction_repeats` (default 3), `guardrails.min_satisfaction` (default 0.9), and each repo's `playwright_dir`.
+1. Read `.moth/system.yaml`. Take `guardrails.satisfaction_repeats` (default 3), `guardrails.min_satisfaction` (default 0.9), and each repo's `playwright_config` and `playwright_dir` (both relative to the repo root).
 2. Read `.moth/scenarios/<TICKET-ID>/scenarios.md`. If it is missing, return verdict ⚠️ **inconclusive**, reason `no-scenarios`.
 3. For each worktree, check `git -C <worktree> rev-parse HEAD` equals `git -C <worktree> rev-parse <SHA>^{commit}` (the caller may give a short SHA) and `git -C <worktree> status --porcelain` is empty. If not, return ⚠️ **inconclusive**, reason `wrong-commit`.
 4. Make a scratch dir: `VSCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-verify-<TICKET-ID>.XXXXXX")`.
@@ -39,11 +39,12 @@ Nothing else. If the caller sends you the diff, the fix plan or its own tests, i
 
 ### 3. Run
 ```bash
+cd <worktree>/<dir of playwright_config>
 PLAYWRIGHT_JSON_OUTPUT_NAME=$VSCRATCH/report.json \
-  npx playwright test <playwright_dir>/moth-holdout-<TICKET-ID>.spec.ts \
+  npx playwright test moth-holdout-<TICKET-ID> \
   --repeat-each <guardrails.satisfaction_repeats> --reporter=json --output $VSCRATCH/results
 ```
-Run it from the worktree, against the running stack. If the stack doesn't answer, return ⚠️ **inconclusive**, reason `stack-down`. Don't start or fix it yourself.
+Run it from the config's folder (in a monorepo that is not the repo root), against the running stack. If the stack doesn't answer, return ⚠️ **inconclusive**, reason `stack-down`. Don't start or fix it yourself.
 
 ### 4. Score
 ```bash

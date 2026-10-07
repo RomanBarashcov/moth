@@ -25,7 +25,8 @@ repos:                      # any language; moth-init detects these from the rep
     language: <language>
     run: <start command>
     test: <full test command>
-    playwright_dir: e2e     # folder with Playwright specs (UI repos only)
+    playwright_config: playwright.config.ts   # relative to the repo root (UI repos only)
+    playwright_dir: e2e     # specs folder, relative to the repo root (config folder + testDir)
     e2e: <end-to-end test command>
 
 links:

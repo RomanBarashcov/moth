@@ -13,7 +13,7 @@ Fixes <TICKET-URL>
 
 ### Proof
 - Red → green: `<test command>`
-- Re-run it yourself: `npx playwright test bugs/<TICKET-ID>.spec.ts --headed`
+- Re-run it yourself: `cd <dir of playwright_config> && npx playwright test bugs/<TICKET-ID> --headed`
 
 #### Before / after
 <!-- Output of `collect-evidence.sh markdown`; images live on the never-merged evidence branch. Non-UI bugs: red/green output or request/response diff instead. -->

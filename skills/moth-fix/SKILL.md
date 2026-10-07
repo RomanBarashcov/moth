@@ -44,6 +44,7 @@ When any stage fails, jump to **Stop** and do not continue.
 1. Write the failing test **from the expected behaviour, before reading the suspected code.** This guards against a self-confirming test.
    - Use the lowest level that shows the bug: unit, integration or e2e.
    - For UI-visible bugs, **always** also write a Playwright spec at `<repo>/<playwright_dir>/bugs/<TICKET-ID>.spec.ts`, with video, trace and screenshot enabled.
+   - Run Playwright from the config's folder, so a monorepo finds its config and its `node_modules`: `cd <repo>/<dir of playwright_config> && npx playwright test bugs/<TICKET-ID>`.
 2. Run the test and confirm it fails **for the reason in the ticket**, not for a setup error.
 3. When you get stuck, gather evidence from logs, metrics and data (read-only). If the superpowers `systematic-debugging` skill is available, use it.
 4. Stop after `guardrails.reproduce_attempts` failed attempts. Stop with one category from `templates/blackbox.md`.
