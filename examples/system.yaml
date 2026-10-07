@@ -56,6 +56,8 @@ guardrails:
   max_turns: 150
   timeout_minutes: 45
   reproduce_attempts: 3
+  satisfaction_repeats: 3   # each scenario × variation runs this many times
+  min_satisfaction: 0.9     # overall and per-scenario floor for the verifier
   max_files: 10
   max_open_prs: 3
   concurrency: 1
