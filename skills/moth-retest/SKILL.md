@@ -49,7 +49,7 @@ Let `<STAMP>` be the current time as `YYYYMMDD-HHMM`.
 6. **Look at every screenshot.** It must show the expected behaviour, not a blank or loading page. If it doesn't, add a `page.screenshot()` at the moment that proves it, and re-run.
 
 ### 4. Independent verification
-1. Spawn the `moth-scenario-writer` agent with the ticket ID and the project root. It returns `exists` when the scenarios are already there; any other answer means they were written just now (e.g. a human fixed it), so say so in the report.
+1. Spawn the `moth-scenario-writer` agent with the ticket ID, the project root and the URL of the running stack. It returns `exists` when the scenarios are already there; any other answer means they were written just now (e.g. a human fixed it), so say so in the report.
 2. The verifier refuses a dirty worktree (`wrong-commit`). Delete any spec you wrote in step 3.3 and undo any edit from step 3.6, so `git -C <worktree> status --porcelain` is empty.
 3. Spawn the `moth-verifier` agent with the ticket ID, the project root, each worktree path and its SHA from step 2, the running stack, and the path of the `moth-fix` skill's `scripts/` directory.
 4. Keep the **Independent verification** block it returns for the report.

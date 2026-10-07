@@ -38,6 +38,7 @@ environments:
     down: docker compose -f docker/compose.yaml down -v
     seed: make db-seed
   staging:
+    url: https://staging.example.com   # optional; the scenario writer browses it read-only
     read_only:
       logs: { mcp: axiom }
       metrics: { mcp: grafana }

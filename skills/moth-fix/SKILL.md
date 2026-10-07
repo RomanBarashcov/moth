@@ -29,9 +29,10 @@ When any stage fails, jump to **Stop** and do not continue.
    - **Actual behaviour**, taken from the ticket.
    - The **suspected services**, taken from the `system.yaml` repo map.
 4. Stop with `vague-ticket` if expected vs actual can't be stated. Before stopping, comment the clarifying questions on the ticket and set the `needs-info` label.
-5. Spawn the `moth-scenario-writer` agent with the ticket ID and the project root. Do it now, before you reproduce or read any code.
+5. Spawn the `moth-scenario-writer` agent with the ticket ID and the project root (plus the app URL if a local stack is already up). Do it now, before you reproduce or read any code.
+   - When the ticket is thin, it observes the app and read-only errors/logs to fill in steps and data. It never reads code.
    - It writes holdout scenarios to `.moth/scenarios/<TICKET-ID>/scenarios.md` and returns one line.
-   - `vague-ticket`: stop as in step 4.
+   - `vague-ticket: <question>`: stop as in step 4, and put its question on the ticket.
    - **Never read `.moth/scenarios/`.** Not now, not later. Scenarios you have seen can't check your fix.
 
 ### 2. Env
