@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1008" height="682" viewBox="0 0 1008 682" role="img" aria-label="Moth: a moth drawn in falling green matrix glyphs">
+<svg xmlns="http://www.w3.org/2000/svg" width="1008" height="682" viewBox="0 0 1008 682" role="img" aria-label="Moth: a moth drawn in falling green matrix glyphs, in front of the Harvard Mark II relay panels">
 <title>Moth</title>
 
   <style>
@@ -17,11 +17,73 @@
     .drop { animation: fall linear infinite; }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .72; } }
     .pulse { animation: pulse 3.2s ease-in-out infinite; }
+    .mk { fill: none; stroke: #1f8f45; stroke-width: 1.2; opacity: .5; }
+    .mk-fill { fill: #06140c; stroke: #1f8f45; stroke-width: 1.2; opacity: .55; }
+    .mk-label { font: bold 11px 'Menlo','DejaVu Sans Mono',monospace; fill: #2fbf5f; letter-spacing: 2px; opacity: .85; }
+    .mk-note { font: 11px 'Menlo','DejaVu Sans Mono',monospace; fill: #6dffa0; }
+    .mk-hot { fill: none; stroke: #6dffa0; stroke-width: 1.4; }
   </style>
 <defs><filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<pattern id="relays" width="22" height="26" patternUnits="userSpaceOnUse"><rect x="4" y="4" width="14" height="9" rx="1.5" fill="none" stroke="#1f8f45" stroke-width="1"/><line x1="11" y1="13" x2="11" y2="19" stroke="#1f8f45" stroke-width="1"/><circle cx="11" cy="21" r="2" fill="none" stroke="#1f8f45" stroke-width="1"/></pattern>
 <clipPath id="field"><rect width="1008" height="612"/></clipPath>
 <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#030806" stop-opacity="0"/><stop offset="1" stop-color="#030806"/></linearGradient></defs>
 <rect class="bg" width="1008" height="682"/>
+<g class="mark2" clip-path="url(#field)" aria-hidden="true">
+<line class="mk" x1="0" y1="600" x2="1008" y2="600"/>
+<rect class="mk-fill" x="32" y="58" width="176" height="542" rx="3"/>
+<rect class="mk" x="40" y="66" width="160" height="20" rx="2"/>
+<text class="mk-label" x="120.0" y="80" text-anchor="middle">PANEL D</text>
+<rect x="42" y="96" width="156" height="484" fill="url(#relays)" opacity=".45"/>
+<line class="mk" x1="38" y1="208" x2="202" y2="208" stroke-dasharray="2 4"/>
+<line class="mk" x1="38" y1="338" x2="202" y2="338" stroke-dasharray="2 4"/>
+<line class="mk" x1="38" y1="468" x2="202" y2="468" stroke-dasharray="2 4"/>
+<rect class="mk-fill" x="224" y="58" width="176" height="542" rx="3"/>
+<rect class="mk" x="232" y="66" width="160" height="20" rx="2"/>
+<text class="mk-label" x="312.0" y="80" text-anchor="middle">PANEL E</text>
+<rect x="234" y="96" width="156" height="484" fill="url(#relays)" opacity=".45"/>
+<line class="mk" x1="230" y1="208" x2="394" y2="208" stroke-dasharray="2 4"/>
+<line class="mk" x1="230" y1="338" x2="394" y2="338" stroke-dasharray="2 4"/>
+<line class="mk" x1="230" y1="468" x2="394" y2="468" stroke-dasharray="2 4"/>
+<rect class="mk-fill" x="416" y="58" width="176" height="542" rx="3"/>
+<rect class="mk" x="424" y="66" width="160" height="20" rx="2"/>
+<text class="mk-label" x="504.0" y="80" text-anchor="middle">PANEL F</text>
+<rect x="426" y="96" width="156" height="484" fill="url(#relays)" opacity=".45"/>
+<line class="mk" x1="422" y1="208" x2="586" y2="208" stroke-dasharray="2 4"/>
+<line class="mk" x1="422" y1="338" x2="586" y2="338" stroke-dasharray="2 4"/>
+<line class="mk" x1="422" y1="468" x2="586" y2="468" stroke-dasharray="2 4"/>
+<rect class="mk-fill" x="608" y="58" width="176" height="542" rx="3"/>
+<rect class="mk" x="616" y="66" width="160" height="20" rx="2"/>
+<text class="mk-label" x="696.0" y="80" text-anchor="middle">PANEL G</text>
+<rect x="618" y="96" width="156" height="484" fill="url(#relays)" opacity=".45"/>
+<line class="mk" x1="614" y1="208" x2="778" y2="208" stroke-dasharray="2 4"/>
+<line class="mk" x1="614" y1="338" x2="778" y2="338" stroke-dasharray="2 4"/>
+<line class="mk" x1="614" y1="468" x2="778" y2="468" stroke-dasharray="2 4"/>
+<rect class="mk-fill" x="800" y="58" width="176" height="542" rx="3"/>
+<rect class="mk" x="808" y="66" width="160" height="20" rx="2"/>
+<text class="mk-label" x="888.0" y="80" text-anchor="middle">PANEL H</text>
+<rect x="810" y="96" width="156" height="484" fill="url(#relays)" opacity=".45"/>
+<line class="mk" x1="806" y1="208" x2="970" y2="208" stroke-dasharray="2 4"/>
+<line class="mk" x1="806" y1="338" x2="970" y2="338" stroke-dasharray="2 4"/>
+<line class="mk" x1="806" y1="468" x2="970" y2="468" stroke-dasharray="2 4"/>
+<path class="mk" d="M0 46 H1008"/>
+<line class="mk" x1="62" y1="46" x2="62" y2="58"/>
+<line class="mk" x1="254" y1="46" x2="254" y2="58"/>
+<line class="mk" x1="446" y1="46" x2="446" y2="58"/>
+<line class="mk" x1="638" y1="46" x2="638" y2="58"/>
+<line class="mk" x1="830" y1="46" x2="830" y2="58"/>
+<path class="mk" d="M0 36 H1008"/>
+<line class="mk" x1="112" y1="36" x2="112" y2="58"/>
+<line class="mk" x1="304" y1="36" x2="304" y2="58"/>
+<line class="mk" x1="496" y1="36" x2="496" y2="58"/>
+<line class="mk" x1="688" y1="36" x2="688" y2="58"/>
+<line class="mk" x1="880" y1="36" x2="880" y2="58"/>
+<path class="mk" d="M0 26 H1008"/>
+<line class="mk" x1="162" y1="26" x2="162" y2="58"/>
+<line class="mk" x1="354" y1="26" x2="354" y2="58"/>
+<line class="mk" x1="546" y1="26" x2="546" y2="58"/>
+<line class="mk" x1="738" y1="26" x2="738" y2="58"/>
+<line class="mk" x1="930" y1="26" x2="930" y2="58"/>
+</g>
 <g class="rain" clip-path="url(#field)">
 <g class="drop" style="animation-duration:12.9s;animation-delay:-6.9s"><text x="1" y="14" opacity="0.73">0</text><text x="1" y="32" opacity="0.8">[</text><text x="1" y="50" opacity="0.87">1</text><text x="1" y="68" opacity="0.93">0</text><text x="1" y="86" opacity="1.0">ｱ</text><text x="1" y="428" opacity="0.12">ﾇ</text><text x="1" y="446" opacity="0.12">3</text><text x="1" y="464" opacity="0.13">ｾ</text><text x="1" y="482" opacity="0.2">ﾇ</text><text x="1" y="500" opacity="0.27">8</text><text x="1" y="518" opacity="0.33">ｱ</text><text x="1" y="536" opacity="0.4">ｷ</text><text x="1" y="554" opacity="0.47">ﾊ</text><text x="1" y="572" opacity="0.53">7</text><text x="1" y="590" opacity="0.6">ﾁ</text><text x="1" y="608" opacity="0.67">ﾊ</text></g>
 <text x="15" y="14" opacity="0.39">ﾊ</text>
@@ -1347,6 +1409,13 @@
 <text class="body" x="505" y="500">B</text>
 </g>
 <rect y="552" width="1008" height="60" fill="url(#fade)"/>
+<g class="relay70">
+<rect class="mk-hot" x="546" y="548" width="30" height="20" rx="2"/>
+<path class="mk-hot" d="M576 558 H632 V520"/>
+<text class="mk-note" x="638" y="516">RELAY #70 · PANEL F</text>
+<text class="mk-note" x="638" y="532" opacity=".7">9 SEP 1947, 15:45</text>
+</g>
+
 <text class="title glow" x="504.0" y="642" text-anchor="middle">MOTH</text>
 <text class="tag" x="504.0" y="668" text-anchor="middle">ticket → reproduce → fix → proof · "first actual case of bug being found", 1947</text>
 </svg>
