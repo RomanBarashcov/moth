@@ -8,25 +8,25 @@ tracker:
   label: moth               # tickets with this label are queued for Moth
   needs_info_label: needs-info
 
-repos:
+repos:                      # any language; moth-init detects these from the repo
   service-a:
-    path: repos/service-a
-    language: go
-    run: make run
-    test: make test
-    test_one: go test ./... -run {name}
+    path: ../service-a      # sibling of the workspace, not inside it
+    language: <language>    # e.g. the stack detected from go.mod, package.json, pyproject.toml...
+    run: <start command>    # e.g. make run
+    test: <full test command>
+    test_one: <one test command, {name} = test name>
   service-b:
-    path: repos/service-b
-    language: typescript
-    run: pnpm dev
-    test: pnpm test:run
+    path: ../service-b
+    language: <language>
+    run: <start command>
+    test: <full test command>
   web-app:
-    path: repos/web-app
-    language: react
-    run: pnpm dev
-    test: pnpm test:run
-    playwright_dir: e2e
-    e2e: pnpm test:e2e
+    path: ../web-app
+    language: <language>
+    run: <start command>
+    test: <full test command>
+    playwright_dir: e2e     # folder with Playwright specs (UI repos only)
+    e2e: <end-to-end test command>
 
 links:
   - web-app -> service-a: REST /api/v1

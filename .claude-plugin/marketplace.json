@@ -1,0 +1,19 @@
+{
+  "name": "moth",
+  "owner": {
+    "name": "Roman Barashcov"
+  },
+  "metadata": {
+    "description": "Moth: autonomous, test-first bug fixing for Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "moth",
+      "source": "./",
+      "description": "Autonomous bug fixing: takes a Linear/Jira ticket, reproduces it, fixes it test-first and opens a PR with re-runnable proof and a Blackbox run log.",
+      "version": "0.2.2",
+      "license": "MIT",
+      "keywords": ["bugs", "debugging", "tdd", "playwright", "autonomous", "workflow"]
+    }
+  ]
+}

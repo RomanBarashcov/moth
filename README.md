@@ -10,13 +10,14 @@ A Claude Code plugin. It reproduces the bug, writes a failing test, fixes it, an
 
 ## Start in 3 steps (~10 min)
 
-1. Make a workspace folder next to your code:
+1. Install once (every session gets it after that):
    ```bash
-   mkdir acme-moth && cd acme-moth
+   claude plugin marketplace add RomanBarashcov/moth
+   claude plugin install moth@moth
    ```
-2. Start Claude Code with the plugin and set up the workspace:
+2. Make a workspace folder next to your code and set it up:
    ```bash
-   claude --plugin-dir /path/to/moth
+   mkdir acme-moth && cd acme-moth && claude
    > /moth:moth-init
    ```
    It finds your repos, commands and tools. It asks only what it can't find.
@@ -24,6 +25,8 @@ A Claude Code plugin. It reproduces the bug, writes a failing test, fixes it, an
    ```bash
    > /moth:moth-fix ACME-123
    ```
+
+Update: `claude plugin marketplace update moth`. Hacking on Moth itself: `claude --plugin-dir .` from this repo.
 
 Config example: [`examples/system.yaml`](examples/system.yaml).
 
