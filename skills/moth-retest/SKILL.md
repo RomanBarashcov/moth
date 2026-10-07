@@ -17,7 +17,7 @@ You take one ticket whose fix is merged or in an open PR, and show **with fresh 
 
 ## Preconditions
 
-- Same as `moth-fix`: run from the project root, `.moth/system.yaml` and `.moth/guard.json` exist (otherwise tell the user to run `/moth:moth-init`). Nothing is written to the project: scratch output goes to `SCRATCH=$(mktemp -d -t moth-retest-<TICKET-ID>)`, deleted at the end.
+- Same as `moth-fix`: run from the project root, `.moth/system.yaml` and `.moth/guard.json` exist (otherwise tell the user to run `/moth:moth-init`). Nothing is written to the project except holdout scenarios the scenario writer may add in step 4: scratch output goes to `SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-retest-<TICKET-ID>.XXXXXX")`, deleted at the end.
 - Only the `local` environment. Staging and prod stay read-only, because a Playwright spec clicks buttons and writes data.
 - If a value you need is `TODO`, stop with `missing-config` and name the key in the report.
 
@@ -49,8 +49,8 @@ Let `<STAMP>` be the current time as `YYYYMMDD-HHMM`.
 6. **Look at every screenshot.** It must show the expected behaviour, not a blank or loading page. If it doesn't, add a `page.screenshot()` at the moment that proves it, and re-run.
 
 ### 4. Independent verification
-1. Spawn the `moth-scenario-writer` agent with the ticket ID, the project root and the URL of the running stack. It returns `exists` when the scenarios are already there; any other answer means they were written just now (e.g. a human fixed it), so say so in the report.
-2. The verifier refuses a dirty worktree (`wrong-commit`). Delete any spec you wrote in step 3.3 and undo any edit from step 3.6, so `git -C <worktree> status --porcelain` is empty.
+1. Spawn the `moth-scenario-writer` agent with the ticket ID, the project root and the URL of the running stack. It returns `exists` when the scenarios are already there, and `wrote ...` when it wrote them just now (e.g. a human fixed it): say so in the report. On `vague-ticket: <question>`, skip the verifier, make the verdict ⚠️ **inconclusive** and put the question in the report.
+2. The verifier refuses a dirty worktree (`wrong-commit`). Delete any spec you wrote in step 3.3, undo any edit from step 3.6, and remove anything the test runs in step 3.4 left in the worktree (untracked reports, coverage), so `git -C <worktree> status --porcelain` is empty.
 3. Spawn the `moth-verifier` agent with the ticket ID, the project root, each worktree path and its SHA from step 2, the running stack, and the path of the `moth-fix` skill's `scripts/` directory.
 4. Keep the **Independent verification** block it returns for the report.
 5. Never read or edit `.moth/scenarios/` yourself.

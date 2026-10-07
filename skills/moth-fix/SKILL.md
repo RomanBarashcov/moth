@@ -10,7 +10,7 @@ You take one bug ticket and drive it to a PR **autonomously**. A human only revi
 ## Preconditions
 
 - Run from the project root. Moth's config lives in its git-ignored `.moth/` folder; `knowledge/` below means `.moth/knowledge/`. If `.moth/system.yaml` or `.moth/guard.json` is missing, stop and tell the user to run `/moth:moth-init`.
-- Put every scratch file (test output, Playwright media) in `SCRATCH=$(mktemp -d -t moth-<TICKET-ID>)`, never in the project. It is deleted when the run ends.
+- Put every scratch file (test output, Playwright media) in `SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-<TICKET-ID>.XXXXXX")`, never in the project. It is deleted when the run ends.
 - Keep the Blackbox (`templates/blackbox.md`) as notes during the run. Don't write it to a file.
 - Read `.moth/system.yaml` first. Repo paths in it are relative to the project root. It is the only source of truth for repos, environments, MCP servers, tracker and guardrails. Never guess a command that is not in it.
 - If a value you need is `TODO`, stop with `missing-config` and name the exact key in the Blackbox.

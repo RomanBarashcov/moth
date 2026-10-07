@@ -208,5 +208,27 @@ class FailClosedTest(unittest.TestCase):
         self.assertEqual(self.run_hook(None, "git push origin main"), "")
 
 
+class FindGuardTest(unittest.TestCase):
+    def test_found_in_parent_up_to_git_top_level(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, ".git"))
+            os.makedirs(os.path.join(root, ".moth"))
+            path = os.path.join(root, ".moth", "guard.json")
+            with open(path, "w") as f:
+                f.write("{}")
+            sub = os.path.join(root, "apps", "web")
+            os.makedirs(sub)
+            self.assertEqual(guard.find_guard(sub), path)
+
+    def test_stops_at_git_top_level(self):
+        with tempfile.TemporaryDirectory() as outer:
+            os.makedirs(os.path.join(outer, ".moth"))
+            with open(os.path.join(outer, ".moth", "guard.json"), "w") as f:
+                f.write("{}")
+            repo = os.path.join(outer, "repo")
+            os.makedirs(os.path.join(repo, ".git"))
+            self.assertIsNone(guard.find_guard(repo))
+
+
 if __name__ == "__main__":
     unittest.main()

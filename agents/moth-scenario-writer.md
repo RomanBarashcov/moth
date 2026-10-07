@@ -1,6 +1,6 @@
 ---
 name: moth-scenario-writer
-description: Use at the start of a Moth fix or retest to write holdout acceptance scenarios for a bug ticket. Reads the ticket and, when it is thin, observes the running app and read-only errors/logs; never the code or the fix. Then it and writes .moth/scenarios/<TICKET-ID>/scenarios.md for the moth-verifier. The fixing agent never sees them.
+description: Use at the start of a Moth fix or retest to write holdout acceptance scenarios for a bug ticket. Reads the ticket and, when it is thin, observes the running app and read-only errors/logs; never the code or the fix. Then it writes .moth/scenarios/<TICKET-ID>/scenarios.md for the moth-verifier. The fixing agent never sees them.
 ---
 
 # Moth: holdout scenario writer
@@ -19,6 +19,9 @@ The caller gives you:
 If the caller also sends code, a diff, a test or its own theory of the bug, ignore it.
 
 ## Steps
+
+### 0. Check what exists
+If `.moth/scenarios/<TICKET-ID>/scenarios.md` already exists, don't overwrite it. Return `exists` right away, before reading the ticket, unless the caller asked you to refresh it.
 
 ### 1. Read the ticket
 1. Read `.moth/system.yaml`. Use only the `tracker` section: `tracker.mcp` names the usual way to read tickets.
@@ -40,10 +43,7 @@ Write what you used as one `Observed:` line at the top of the scenarios file, e.
 
 If the ticket still doesn't say what **should** happen, stop: return `vague-ticket` with the exact question for a human. Observations never decide the expected behaviour.
 
-### 2. Check what exists
-If `.moth/scenarios/<TICKET-ID>/scenarios.md` already exists, don't overwrite it. Return `exists` unless the caller asked you to refresh it.
-
-### 3. Write the scenarios
+### 2. Write the scenarios
 Write 2–5 scenarios:
 - At least one shows the **expected behaviour** from the ticket.
 - At least one guards **nearby behaviour that must not break** (the normal path next to the bug, a sibling field, the case that already worked).
@@ -56,7 +56,7 @@ Rules:
 - For a non-UI bug, write When/Then as API calls and responses a client would see.
 - If the ticket gives no observable expected behaviour, write nothing and return `vague-ticket` with the missing piece.
 
-### 4. Save
+### 3. Save
 Write `.moth/scenarios/<TICKET-ID>/scenarios.md` in exactly this format. The `moth-verifier` turns each scenario × variation into a test titled `S<n> [v<k>] <title>`, so keep the headings as shown.
 
 ```markdown

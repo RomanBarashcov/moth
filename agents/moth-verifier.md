@@ -24,16 +24,17 @@ Nothing else. If the caller sends you the diff, the fix plan or its own tests, i
 ### 1. Prepare
 1. Read `.moth/system.yaml`. Take `guardrails.satisfaction_repeats` (default 3), `guardrails.min_satisfaction` (default 0.9), and each repo's `playwright_dir`.
 2. Read `.moth/scenarios/<TICKET-ID>/scenarios.md`. If it is missing, return verdict ⚠️ **inconclusive**, reason `no-scenarios`.
-3. For each worktree, check `git -C <worktree> rev-parse HEAD` matches the given SHA and `git -C <worktree> status --porcelain` is empty. If not, return ⚠️ **inconclusive**, reason `wrong-commit`.
-4. Make a scratch dir: `VSCRATCH=$(mktemp -d -t moth-verify-<TICKET-ID>)`.
+3. For each worktree, check `git -C <worktree> rev-parse HEAD` equals `git -C <worktree> rev-parse <SHA>^{commit}` (the caller may give a short SHA) and `git -C <worktree> status --porcelain` is empty. If not, return ⚠️ **inconclusive**, reason `wrong-commit`.
+4. Make a scratch dir: `VSCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-verify-<TICKET-ID>.XXXXXX")`.
 
 ### 2. Write the throwaway spec
 1. Put it at `<worktree>/<playwright_dir>/moth-holdout-<TICKET-ID>.spec.ts`, in the UI repo the scenarios talk about. It is never committed.
+   - **No repo has a `playwright_dir`** (an API-only project): put the spec in `$VSCRATCH` instead, run `npm init -y && npm i -D @playwright/test` there, and in step 3 run from `$VSCRATCH` with `moth-holdout-<TICKET-ID>.spec.ts` as the path. API tests need no browser.
 2. One test per scenario × variation. Titles are **exactly** `S<n> [v<k>] <title>`, e.g. `S2 [v3] Empty cart shows a hint`. `satisfaction.py` groups results by that title.
 3. Turn on media for every test: `test.use({ video: 'on', screenshot: 'on' })`.
 4. Write the steps from **When** as a user would do them. Find elements by role, label or visible text, the way the scenario names them. Read product code only if a page can't be reached any other way, and never to learn how the fix works.
 5. Assert the **Then** outcome. At the moment it should be visible, take `page.screenshot({ path: test.info().outputPath('then.png') })`.
-6. **Non-UI bugs:** use Playwright's `request` fixture to call the API, and assert the Then on the response. Same file, same titles, same report.
+6. **Non-UI bugs:** use Playwright's `request` fixture to call the API, and assert the Then on the response. Same file, same titles, same report. Instead of a screenshot, write the request, status and body to `test.info().outputPath('then.json')`; that file is the visible proof in step 5.
 7. Don't touch any other file in the repo.
 
 ### 3. Run
@@ -51,7 +52,7 @@ python3 <moth-fix scripts>/satisfaction.py $VSCRATCH/report.json --min <guardrai
 Keep its markdown table. Exit `0`: score ≥ min. Exit `1`: below. Exit `2`: no results, so return ⚠️ **inconclusive**, reason `no-results`.
 
 ### 5. Judge
-1. **Look at the `then.png` of every scenario × variation**, at least one repeat each. Open the video when a screenshot is unclear.
+1. **Look at the `then.png` (or `then.json` for API tests) of every scenario × variation**, at least one repeat each. Open the video when a screenshot is unclear.
 2. For each scenario, decide one of:
    - **satisfied**: the scenario's satisfaction is ≥ min and every variation's passing screenshot shows the Then outcome,
    - **not satisfied**: the scenario's satisfaction is below min (`satisfaction.py` lists it under "Below min"), or a passing test's screenshot doesn't show the Then outcome (blank page, spinner, old error, wrong value). A few failed trajectories within the floor are not enough on their own; mention them in the note,

@@ -264,9 +264,26 @@ def check_command(command, cwd, depth=0):
         cwd = check_simple(words, cwd, depth)
 
 
+def find_guard(project_dir):
+    """Finds .moth/guard.json in project_dir or a parent, up to the git top level.
+
+    moth-init puts .moth/ at the git top level, but Claude Code may be started
+    in a subdirectory of the repo (CLAUDE_PROJECT_DIR is then that subdirectory).
+    """
+    directory = os.path.abspath(project_dir)
+    while True:
+        path = os.path.join(directory, ".moth", "guard.json")
+        if os.path.isfile(path):
+            return path
+        parent = os.path.dirname(directory)
+        if os.path.exists(os.path.join(directory, ".git")) or parent == directory:
+            return None
+        directory = parent
+
+
 def load_guard(project_dir):
-    path = os.path.join(project_dir, ".moth", "guard.json")
-    if not os.path.isfile(path):
+    path = find_guard(project_dir)
+    if path is None:
         return None
     with open(path) as f:
         guard = json.load(f)
