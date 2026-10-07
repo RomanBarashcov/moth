@@ -291,6 +291,17 @@ class HoldoutTest(unittest.TestCase):
             ("Grep", {"pattern": "x", "path": ".Moth/SCENARIOS"}),
             ("Bash", {"command": "git grep --no-index Then"}),
             ("Bash", {"command": "rgrep Then"}),
+            ("Bash", {"command": "cat .mo''th/scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "cat .mo\\th/scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "cat \".mo\"th/scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "sh -c 'cat .mo\"\"th/scen*/*/*'"}),
+            ("Bash", {"command": "cat .mo*/sc*/*/*"}),
+            ("Bash", {"command": "cat .{moth,x}/scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "cat {.moth,x}/scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "cat .mot?/scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "cat $'\\x2emoth/scenarios/ACME-1/scenarios.md'"}),
+            ("Glob", {"pattern": ".m*/**/*.md"}),
+            ("Grep", {"pattern": "Then", "glob": ".*/scenarios/**"}),
         ]
         for tool, tool_input in denied:
             with self.subTest(tool=tool, tool_input=tool_input):
@@ -311,6 +322,9 @@ class HoldoutTest(unittest.TestCase):
             ("Bash", {"command": "find src -name '*.go'"}),
             ("Bash", {"command": "rg ACME"}),
             ("Bash", {"command": "grep -n ACME README.md"}),
+            ("Bash", {"command": "ls src/*.go"}),
+            ("Glob", {"pattern": "**/*.go"}),
+            ("Bash", {"command": "cp src/{a,b}.go /tmp"}),
         ]
         for tool, tool_input in allowed:
             with self.subTest(tool=tool, tool_input=tool_input):
