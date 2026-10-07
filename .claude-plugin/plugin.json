@@ -1,7 +1,7 @@
 {
   "name": "moth",
   "description": "Autonomous bug fixing: takes a Linear/Jira ticket, reproduces it, fixes it test-first and opens a PR with re-runnable proof and a run report in the PR, then retests the fix on demand with fresh screenshots.",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "author": {
     "name": "Roman Barashcov"
   },

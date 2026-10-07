@@ -208,5 +208,117 @@ class FailClosedTest(unittest.TestCase):
         self.assertEqual(self.run_hook(None, "git push origin main"), "")
 
 
+class FindGuardTest(unittest.TestCase):
+    def test_found_in_parent_up_to_git_top_level(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, ".git"))
+            os.makedirs(os.path.join(root, ".moth"))
+            path = os.path.join(root, ".moth", "guard.json")
+            with open(path, "w") as f:
+                f.write("{}")
+            sub = os.path.join(root, "apps", "web")
+            os.makedirs(sub)
+            self.assertEqual(guard.find_guard(sub), path)
+
+    def test_stops_at_git_top_level(self):
+        with tempfile.TemporaryDirectory() as outer:
+            os.makedirs(os.path.join(outer, ".moth"))
+            with open(os.path.join(outer, ".moth", "guard.json"), "w") as f:
+                f.write("{}")
+            repo = os.path.join(outer, "repo")
+            os.makedirs(os.path.join(repo, ".git"))
+            self.assertIsNone(guard.find_guard(repo))
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class HoldoutTest(unittest.TestCase):
+    """The fixer (main thread or any other agent) must not read .moth/scenarios/."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.project = cls.tmp.name
+        git("init", "-q", cwd=cls.project)
+        os.makedirs(os.path.join(cls.project, ".moth", "scenarios", "ACME-1"))
+        os.makedirs(os.path.join(cls.project, ".moth", "knowledge"))
+        os.makedirs(os.path.join(cls.project, "src"))
+        with open(os.path.join(cls.project, ".moth", "guard.json"), "w") as f:
+            f.write("{}")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def run_hook(self, tool_name, tool_input, agent_type=None):
+        payload = {"tool_name": tool_name, "tool_input": tool_input, "cwd": self.project}
+        if agent_type:
+            payload["agent_type"] = agent_type
+        result = subprocess.run(
+            [sys.executable, os.path.join(HOOKS, "guard.py")],
+            input=json.dumps(payload), capture_output=True, text=True,
+            env={**os.environ, "CLAUDE_PROJECT_DIR": self.project},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return '"deny"' in result.stdout
+
+    def scenario(self):
+        return os.path.join(self.project, ".moth", "scenarios", "ACME-1", "scenarios.md")
+
+    def test_fixer_is_denied(self):
+        denied = [
+            ("Read", {"file_path": self.scenario()}),
+            ("Read", {"file_path": ".moth/scenarios/ACME-1/scenarios.md"}),
+            ("Edit", {"file_path": self.scenario(), "old_string": "a", "new_string": "b"}),
+            ("Grep", {"pattern": "ACME", "path": ".moth/scenarios"}),
+            ("Grep", {"pattern": "ACME", "path": ".moth"}),
+            ("Grep", {"pattern": "Then", "glob": ".moth/**/*.md"}),
+            ("Glob", {"pattern": ".moth/scenarios/**"}),
+            ("Bash", {"command": "cat .moth/scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "cat .moth/sc*/*/*.md"}),
+            ("Bash", {"command": "ls .moth"}),
+            ("Bash", {"command": "grep -rn ACME ."}),
+            ("Bash", {"command": "grep -R Then"}),
+            ("Bash", {"command": "find . -name '*.md'"}),
+            ("Bash", {"command": "rg --hidden --no-ignore ACME"}),
+            ("Bash", {"command": "cd src && grep -r ACME .."}),
+            ("Bash", {"command": "cat .moth/knowledge/../scenarios/ACME-1/scenarios.md"}),
+            ("Read", {"file_path": ".moth/knowledge/../scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "cat .MOTH/Scenarios/ACME-1/scenarios.md"}),
+            ("Read", {"file_path": ".MOTH/Scenarios/ACME-1/scenarios.md"}),
+            ("Grep", {"pattern": "x", "path": ".Moth/SCENARIOS"}),
+            ("Bash", {"command": "git grep --no-index Then"}),
+            ("Bash", {"command": "rgrep Then"}),
+        ]
+        for tool, tool_input in denied:
+            with self.subTest(tool=tool, tool_input=tool_input):
+                self.assertTrue(self.run_hook(tool, tool_input))
+                for impostor in ("general-purpose", "moth-verifier", "other:moth-verifier", "moth:other"):
+                    self.assertTrue(self.run_hook(tool, tool_input, agent_type=impostor))
+
+    def test_fixer_keeps_normal_access(self):
+        allowed = [
+            ("Read", {"file_path": ".moth/system.yaml"}),
+            ("Read", {"file_path": os.path.join(self.project, ".moth", "knowledge", "INDEX.md")}),
+            ("Read", {"file_path": "src/app.go"}),
+            ("Grep", {"pattern": "ACME", "path": "src"}),
+            ("Grep", {"pattern": "ACME"}),
+            ("Glob", {"pattern": "src/**/*.go"}),
+            ("Bash", {"command": "cat .moth/system.yaml"}),
+            ("Bash", {"command": "grep -rn ACME src"}),
+            ("Bash", {"command": "find src -name '*.go'"}),
+            ("Bash", {"command": "rg ACME"}),
+            ("Bash", {"command": "grep -n ACME README.md"}),
+        ]
+        for tool, tool_input in allowed:
+            with self.subTest(tool=tool, tool_input=tool_input):
+                self.assertFalse(self.run_hook(tool, tool_input))
+
+    def test_scenario_writer_and_verifier_may_read(self):
+        for agent in ("moth:moth-scenario-writer", "moth:moth-verifier"):
+            with self.subTest(agent=agent):
+                self.assertFalse(self.run_hook("Read", {"file_path": self.scenario()}, agent))
+                self.assertFalse(self.run_hook("Write", {"file_path": self.scenario(), "content": "x"}, agent))
+                self.assertFalse(self.run_hook("Bash", {"command": "cat .moth/scenarios/ACME-1/scenarios.md"}, agent))

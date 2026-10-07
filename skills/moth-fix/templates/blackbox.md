@@ -3,7 +3,7 @@ ticket: ACME-123
 run_id: <claude session id>
 started: 2026-01-01T14:00
 outcome: pr-opened | draft-pr | stopped | needs-info
-reached_stage: intake | env | reproduce | fix | evidence | pr | review
+reached_stage: intake | env | reproduce | fix | evidence | verify | pr | review
 stop_category: none   # or one category from the taxonomy below
 verdict: fixed | partially-fixed | not-fixed | needs-human-input
 confidence: high | medium | low
@@ -25,6 +25,7 @@ minutes: 0
 | reproduce | | | |
 | fix | | | |
 | evidence | | | |
+| verify | | | |
 | pr | | | |
 
 ## How it was reproduced
@@ -49,5 +50,6 @@ env:       env-wont-start, missing-config, missing-secret
 reproduce: missing-seed-data, needs-prod-data, third-party-dependency, race-or-timing, cannot-reproduce
 fix:       limit-exceeded, touches-migration-or-api, tests-flaky
 evidence:  ui-not-capturable, playwright-failed
+verify:    verifier-not-satisfied, verifier-inconclusive
 review:    wrong-root-cause, self-confirming-test, style-or-scope
 -->

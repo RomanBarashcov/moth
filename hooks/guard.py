@@ -27,6 +27,15 @@ HEREDOC = re.compile(
     re.DOTALL,
 )
 MAX_DEPTH = 5
+# Plugin agents arrive as "<plugin>:<agent>"; a bare name could be any user or project agent.
+HOLDOUT_AGENTS = {"moth:moth-scenario-writer", "moth:moth-verifier"}
+HOLDOUT_SAFE = re.compile(r"/(system\.yaml|guard\.json|knowledge(/[^*?\[]*)?)", re.IGNORECASE)
+MOTH_REF = re.compile(r"\.moth([^\s'\";|&()<>`]*)", re.IGNORECASE)
+ALWAYS_RECURSIVE = {"find", "tree", "du", "rsync", "tar", "zip", "rgrep", "ack"}
+RECURSIVE_FLAGS = {"grep": "rR", "egrep": "rR", "fgrep": "rR", "ls": "R", "cp": "rRa", "scp": "r"}
+UNIGNORE_READERS = {"rg", "ag", "ack"}
+PATTERN_FIRST = {"grep", "egrep", "fgrep", "rgrep", "rg", "ag", "ack"}
+holdout_dir = None  # set in main() when the caller may not see the holdout scenarios
 SENSITIVE_VERBS = {"push", "merge"}
 UNVERIFIABLE = re.compile(r"[$`{}*?\[~]")
 GIT_BUILTINS = {
@@ -233,11 +242,59 @@ def check_gh(words):
         raise Denied("merging is a human decision")
 
 
+def check_holdout_text(text):
+    for match in MOTH_REF.finditer(text):
+        suffix = match.group(1)
+        if ".." in suffix or "\\" in suffix or not HOLDOUT_SAFE.fullmatch(suffix):
+            raise Denied(".moth/ holds the holdout scenarios; only system.yaml, guard.json and knowledge/ are open to you")
+
+
+def inside(path, directory):
+    # casefold: macOS and Windows file systems ignore case, so .MOTH/Scenarios is the same folder
+    path = os.path.realpath(path).casefold()
+    directory = os.path.realpath(directory).casefold()
+    return path == directory or path.startswith(directory + os.sep)
+
+
+def reads_recursively(name, args):
+    if name in ALWAYS_RECURSIVE:
+        return True
+    options = [a for a in args if a.startswith("-")]
+    if name in UNIGNORE_READERS:
+        return any(a in ("-u", "-uu", "-uuu", "--hidden", "-.") or a.startswith("--no-ignore") for a in options)
+    flags = RECURSIVE_FLAGS.get(name, "")
+    return any(a in ("--recursive", "--dereference-recursive", "--archive")
+               or (not a.startswith("--") and any(f in a[1:] for f in flags)) for a in options)
+
+
+def check_holdout_words(name, args, cwd):
+    if name == "git" and "grep" in args and any(a in ("--no-index", "--no-exclude-standard", "--untracked") for a in args):
+        raise Denied("git grep over untracked/ignored files would read .moth/scenarios/; search tracked files only")
+    if not reads_recursively(name, args):
+        return
+    if name == "find":
+        targets = []
+        for a in args:
+            if a.startswith(("-", "(", "!")):
+                break
+            targets.append(a)
+    else:
+        targets = [a for a in args if not a.startswith("-")]
+    if name in PATTERN_FIRST and targets and not any(a in ("-e", "-f", "--regexp", "--file") for a in args):
+        targets = targets[1:]
+    for target in targets or ["."]:
+        base = os.path.join(cwd, os.path.expanduser(target.split("*")[0].split("?")[0].split("[")[0] or "."))
+        if inside(holdout_dir, base):
+            raise Denied(f"'{name}' would read .moth/scenarios/ recursively; narrow the path or exclude .moth")
+
+
 def check_simple(words, cwd, depth):
     words = strip_wrappers(words)
     if not words:
         return cwd
     name = program(words[0])
+    if holdout_dir:
+        check_holdout_words(name, words[1:], cwd)
     if UNVERIFIABLE.search(name) and any(w.lower() in SENSITIVE_VERBS for w in words[1:]):
         raise Denied("command name uses shell expansion; name the program literally")
 
@@ -264,9 +321,26 @@ def check_command(command, cwd, depth=0):
         cwd = check_simple(words, cwd, depth)
 
 
+def find_guard(project_dir):
+    """Finds .moth/guard.json in project_dir or a parent, up to the git top level.
+
+    moth-init puts .moth/ at the git top level, but Claude Code may be started
+    in a subdirectory of the repo (CLAUDE_PROJECT_DIR is then that subdirectory).
+    """
+    directory = os.path.abspath(project_dir)
+    while True:
+        path = os.path.join(directory, ".moth", "guard.json")
+        if os.path.isfile(path):
+            return path
+        parent = os.path.dirname(directory)
+        if os.path.exists(os.path.join(directory, ".git")) or parent == directory:
+            return None
+        directory = parent
+
+
 def load_guard(project_dir):
-    path = os.path.join(project_dir, ".moth", "guard.json")
-    if not os.path.isfile(path):
+    path = find_guard(project_dir)
+    if path is None:
         return None
     with open(path) as f:
         guard = json.load(f)
@@ -288,6 +362,8 @@ def deny(reason):
 
 def check_bash(command, guard, cwd=None):
     try:
+        if holdout_dir:
+            check_holdout_text(command)
         check_command(command, cwd or os.getcwd())
     except Denied as denied:
         deny(str(denied))
@@ -314,6 +390,24 @@ def check_mcp(tool_name, guard):
             deny(f"MCP server '{server}' is read-only (staging/prod); '{action}' looks like a write")
 
 
+def holdout_allowed(payload):
+    return payload.get("agent_type") in HOLDOUT_AGENTS
+
+
+def check_file_tool(tool_name, tool_input, cwd):
+    keys = ["file_path", "notebook_path", "path", "glob"] + (["pattern"] if tool_name == "Glob" else [])
+    for key in keys:
+        value = tool_input.get(key)
+        if not isinstance(value, str) or not value:
+            continue
+        try:
+            check_holdout_text(value)
+        except Denied as denied:
+            deny(str(denied))
+        if key != "glob" and inside(os.path.join(cwd, os.path.expanduser(value)), holdout_dir):
+            deny(".moth/scenarios/ is the holdout; only the scenario writer and the verifier read it")
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -335,11 +429,16 @@ def main():
 
     tool_name = payload.get("tool_name", "")
     tool_input = payload.get("tool_input", {}) or {}
+    global holdout_dir
+    if not holdout_allowed(payload):
+        holdout_dir = os.path.join(os.path.dirname(os.path.dirname(find_guard(project_dir))), ".moth", "scenarios")
     try:
         if tool_name == "Bash":
             check_bash(tool_input.get("command", ""), guard, cwd)
         elif tool_name.startswith("mcp__"):
             check_mcp(tool_name, guard)
+        elif holdout_dir and isinstance(tool_input, dict):
+            check_file_tool(tool_name, tool_input, cwd)
     except SystemExit:
         raise
     except Exception as err:
