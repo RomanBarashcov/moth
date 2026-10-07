@@ -47,13 +47,13 @@ You review. You merge. Moth never merges.
 > /moth:moth-retest ACME-123
 ```
 
-Re-runs the bug's test and Playwright spec on the merged code (or the open PR) and the full test suites, then writes a report with fresh screenshots:
+Re-runs the bug's test and Playwright spec on the merged code (or the open PR) and the full test suites, then reports with fresh screenshots:
 
 - ✅ **works**, ❌ **broken** (with the first error), or ⚠️ **inconclusive** (with what's missing).
 - The exact commit it checked, so the proof can't go stale silently.
 - Works for human fixes too: no spec, so it writes a throwaway one from the ticket.
 
-Report: `.moth/runs/ACME-123/retest-<time>.md`. Add `--post` to put it on the ticket, `--on <branch|sha|PR#>` to pick the code.
+The report shows up in the chat. Add `--post` to put it on the ticket, `--on <branch|sha|PR#>` to pick the code.
 
 ## How a run goes
 
@@ -67,7 +67,7 @@ ticket → reproduce → red test → fix → green test → screenshots → PR
 | 2. Reproduce | Writes a failing test from the ticket, before reading the code. Stops after 3 tries. |
 | 3. Fix | Makes the smallest change that turns the test green. Runs all tests. |
 | 4. Proof | Runs the Playwright spec on the old code and the new code. Puts both in the PR. |
-| 5. Record | Writes a run log, a knowledge note, and any improvement ideas. |
+| 5. Record | Puts the run report in the PR (or on the ticket if it stopped), writes a knowledge note, deletes its temp files. |
 
 ## Safety rules
 
@@ -91,10 +91,10 @@ your-project/
   .moth/         ← all of Moth's files, never committed
     system.yaml    repos, commands, tools, rules
     guard.json     safety rules for the hook
-    runs/          a log for every run, success or failure
     knowledge/     one note per fixed bug
-    feedback/      every idea for improving Moth
 ```
+
+That's all. Test output and media live in a temp dir during a run and are deleted after it. The proof is in the PR, where reviewers look.
 
 Several repos? Run Moth from one of them and list the others in `system.yaml` (`path: ../web-app`).
 
@@ -109,21 +109,6 @@ Screenshots go to a separate `moth-evidence` branch. It is never merged, so no i
 - `superpowers`: TDD and debugging
 - Sentry, Axiom or Grafana MCP: read-only logs and errors
 - `ffmpeg`: GIFs in PRs (optional)
-
-## Improving Moth: the feedback chain
-
-Every idea to improve Moth gets one file in `.moth/feedback/`. Ideas can come from you, a reviewer, a CI check, or Moth itself.
-
-Each file answers 6 questions:
-
-1. What went wrong?
-2. Why does it matter?
-3. What was proposed?
-4. What was decided?
-5. What changed?
-6. How do we know it works?
-
-Open `.moth/feedback/INDEX.md` to see all ideas and their status.
 
 ## Why it exists
 

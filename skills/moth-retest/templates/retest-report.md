@@ -1,18 +1,7 @@
----
-ticket: ACME-123
-retested: 2026-01-01T14:00
-verdict: works | broken | inconclusive
-targets:                     # one line per repo: the exact code that was retested
-  - repo: service-a
-    ref: main
-    sha: <commit sha>
-prs: []
----
-
 # Retest ACME-123: ✅ works | ❌ broken | ⚠️ inconclusive
 
 **Expected behaviour:** <from the ticket, one line>
-**Retested on:** `<repo>@<short sha>` (<branch or PR>), local stack
+**Retested on:** `<repo>@<short sha>` (<branch or PR>), local stack. One line per repo.
 
 ## Checks
 | Check | Command | Result |
@@ -35,4 +24,4 @@ prs: []
 
 ## Notes
 - Spec written just for this retest (not in the repo): yes / no
-- Gaps: FB-<NNN> <one line>, or `none`
+- Gaps in the fix's proof (e.g. no regression test): <one line>, or `none`

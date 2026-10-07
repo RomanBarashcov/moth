@@ -5,7 +5,6 @@ area: <domain area, e.g. checkout>
 services: [service-a]
 tags: []
 prs: []
-blackbox: runs/<TICKET-ID>/blackbox.md
 ---
 
 ## How it was found
