@@ -37,34 +37,9 @@ Config example: [`examples/system.yaml`](examples/system.yaml).
 - 🎭 **A Playwright spec** you can re-run from the Playwright config's folder: `npx playwright test bugs/ACME-123 --headed`.
 - 🖼️ **Before/after screenshots and GIFs** in the description.
 - ⚖️ **Independent verification:** holdout scenarios, satisfaction score, judge notes.
-- 🧭 **A short report:** verdict, confidence, what a human needs to check.
-- 🔗 **A comment on the ticket** with the PR link.
+- 🧭 **A short report:** verdict, confidence, what a human needs to check. The ticket gets a comment with the PR link.
 
 You review. You merge. Moth never merges.
-
-## How Moth proves a fix
-
-The agent that fixes a bug also writes its test, so a green test alone can fool itself. Moth adds two checks it can't fake:
-
-- 🙈 **Holdout scenarios.** A separate agent writes acceptance scenarios with variations to `.moth/scenarios/<TICKET-ID>/`. It works from the ticket and never reads the code. If the ticket is thin, it looks at the running app and read-only errors and logs to fill in the steps. *What should happen* still comes only from the ticket; if that's missing, Moth asks on the ticket. The fixer never sees the scenarios.
-- ⚖️ **An independent judge.** Another agent, with no fix context, runs those scenarios against the fix, scores satisfaction over repeated runs, and looks at every screenshot. A passing test whose screenshot doesn't show the ticket's expected result counts as a fail.
-
-If the judge isn't satisfied, Moth goes back to fixing. After 2 rounds it opens a draft PR and says why. Retest runs the judge too.
-
-## Retest after the fix
-
-```bash
-> /moth:moth-retest ACME-123
-```
-
-Re-runs the bug's test and Playwright spec on the merged code (or the open PR) and the full test suites, then reports with fresh screenshots:
-
-- ✅ **works**, ❌ **broken** (with the first error), or ⚠️ **inconclusive** (with what's missing).
-- The exact commit it checked, so the proof can't go stale silently.
-- Runs the independent judge on the holdout scenarios, and writes them first if there are none.
-- Works for human fixes too: no spec, so it writes a throwaway one from the ticket.
-
-The report shows up in the chat. Add `--post` to put it on the ticket, `--on <branch|sha|PR#>` to pick the code.
 
 ## How a run goes
 
@@ -106,16 +81,66 @@ flowchart TD
 | 5. Verify | An independent judge runs the holdout scenarios and scores satisfaction. Below 0.9 → back to step 3 (max 2 rounds). |
 | 6. Record | Puts the run report in the PR (or on the ticket if it stopped), writes a knowledge note, deletes its temp files. |
 
+## Why three agents
+
+### The problem
+- **AI copies the bugs it reads.** It writes new code from the code it sees, so a wrong pattern spreads.
+- **A green test can lie.** The agent that writes the fix also writes the test. If it misread the bug, both are wrong and both pass.
+- **Models grade their own work kindly.** An agent that knows what it meant to do sees that in the result.
+
+### What Moth does
+The work is split by **what each agent is not allowed to see**:
+
+| Agent | Sees | Never sees | So that |
+|---|---|---|---|
+| 🛠️ Fixer | code, logs, ticket | the scenarios | it can't tune the fix to the check |
+| 🙈 Scenario writer | ticket, running app, read-only logs | the code | it can't inherit the code's wrong assumptions |
+| ⚖️ Judge | scenarios, running app, screenshots | the diff and the fixer's reasoning | it grades the result, not the intent |
+
+- The scenarios have variations (other data, other order) and each runs 3 times. The fix passes at **≥ 0.9 satisfaction** per scenario.
+- A passing test whose screenshot doesn't show the expected result counts as a fail.
+- Not satisfied → back to Fix. After 2 rounds → draft PR that says why.
+- *What should happen* comes only from the ticket. If the ticket doesn't say, Moth asks there instead of guessing.
+
+### Why this works
+It's an old rule, *the one who builds doesn't sign off*, applied to agents:
+- **Developer and QA:** test cases come from the requirements, not the code.
+- **Holdout set in ML:** you never score a model on data it trained on.
+- **Evaluator-optimizer** ([Anthropic, *Building effective agents*](https://www.anthropic.com/engineering/building-effective-agents)): one agent builds, another grades and sends it back.
+- **Holdout scenarios** from StrongDM's "dark factory" approach to code no human reads.
+
+### Trade-offs
+- 💸 **Cost:** 3 agents plus scenarios × variations × repeats. Overkill for a typo.
+- 🧠 **Same model, shared blind spots:** all three can be wrong the same way. A different model for the judge would help.
+- 🔓 **Soft isolation:** the guard hook blocks reads of `.moth/scenarios/`, but it checks command text; it isn't a sandbox.
+- 📏 **Unmeasured:** there's no metric yet for how often the judge catches what the tests missed.
+
+## Retest after the fix
+
+```bash
+> /moth:moth-retest ACME-123
+```
+
+Re-runs the bug's test and Playwright spec on the merged code (or the open PR) and the full test suites, then reports with fresh screenshots:
+
+- ✅ **works**, ❌ **broken** (with the first error), or ⚠️ **inconclusive** (with what's missing).
+- The exact commit it checked, so the proof can't go stale silently.
+- Runs the independent judge on the holdout scenarios, and writes them first if there are none.
+- Works for human fixes too: no spec, so it writes a throwaway one from the ticket.
+
+The report shows up in the chat. Add `--post` to put it on the ticket, `--on <branch|sha|PR#>` to pick the code.
+
 ## Safety rules
 
-Enforced by a hook (`hooks/guard.py`), not by trust:
-
+**Blocked by a hook** (`hooks/guard.py`), not by trust:
 - ❌ No push to `main`/`master`. No force push. No merge.
 - ❌ No writes to staging or prod. Read-only logs and errors only.
-- 🙈 Only the scenario writer and the judge can open `.moth/scenarios/`. The fixer is blocked from reading it, including by `grep -r` or `find` over the project.
+- 🙈 Only the scenario writer and the judge can open `.moth/scenarios/`, including via `grep -r` or `find`.
+- 🔒 If the hook itself breaks, it blocks the command.
+
+**Limits in the skills:**
 - 📝 Draft PR if the fix touches more than 10 files, a migration, or a public API.
 - ⏱️ Stops after ~45 min or 3 failed reproduce tries, and comments what it found.
-- 🔒 If the hook itself breaks, it blocks the command.
 
 Test the hook: `python3 -m unittest discover -s hooks`
 
@@ -149,11 +174,9 @@ Screenshots go to a separate `moth-evidence` branch. It is never merged, so no i
 - Sentry, Axiom or Grafana MCP: read-only logs and errors
 - `ffmpeg`: GIFs in PRs (optional)
 
-## Why it exists
+## The name
 
-AI writes code from the code it sees. If that code has bugs, AI copies them. Moth breaks the loop: every bug gets a test, a fix and a note, so the next session sees the right pattern.
-
-> **The name:** in 1947, engineers found a moth stuck in the Harvard Mark II computer. It was stuck in Relay #70, Panel F, the panel behind the moth in the banner. They taped it into the logbook as the *"first actual case of bug being found"*. Every Moth run is logged too.
+> In 1947, engineers found a moth stuck in Relay #70, Panel F of the Harvard Mark II computer: the panel behind the moth in the banner. They taped it into the logbook as the *"first actual case of bug being found"*. Every Moth run is logged too.
 
 ## What's next
 
