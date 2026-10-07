@@ -10,17 +10,18 @@ A Claude Code plugin. It reproduces the bug, writes a failing test, fixes it, an
 
 ## Start in 3 steps (~10 min)
 
-1. Install once (every session gets it after that):
+1. Install once, from your project's root:
    ```bash
-   claude plugin marketplace add RomanBarashcov/moth
-   claude plugin install moth@moth
+   claude plugin marketplace add RomanBarashcov/moth --scope project
+   claude plugin install moth@moth --scope project
    ```
-2. Make a workspace folder next to your code and set it up:
+   `--scope project` shares Moth with your team via `.claude/settings.json`. Use `--scope user` for all your projects, `--scope local` for just you here.
+2. Set it up:
    ```bash
-   mkdir acme-moth && cd acme-moth && claude
+   claude
    > /moth:moth-init
    ```
-   It finds your repos, commands and tools. It asks only what it can't find.
+   It creates `.moth/`, adds it to `.gitignore`, and finds your repos, commands and tools. It asks only what it can't find. Commit the `.gitignore` line.
 3. Fix one ticket:
    ```bash
    > /moth:moth-fix ACME-123
@@ -71,13 +72,17 @@ Test the hook: `python3 -m unittest discover -s hooks`
 ## Where things live
 
 ```
-moth/          ← this repo: the plugin, the same for every project
-acme-moth/     ← your workspace, one per project
-  system.yaml    repos, commands, tools, rules
-  runs/          a log for every run, success or failure
-  knowledge/     one note per fixed bug
-  feedback/      every idea for improving Moth
+your-project/
+  .gitignore     ← one line: .moth/
+  .moth/         ← all of Moth's files, never committed
+    system.yaml    repos, commands, tools, rules
+    guard.json     safety rules for the hook
+    runs/          a log for every run, success or failure
+    knowledge/     one note per fixed bug
+    feedback/      every idea for improving Moth
 ```
+
+Several repos? Run Moth from one of them and list the others in `system.yaml` (`path: ../web-app`).
 
 Screenshots go to a separate `moth-evidence` branch. It is never merged, so no images end up in your code.
 
@@ -93,7 +98,7 @@ Screenshots go to a separate `moth-evidence` branch. It is never merged, so no i
 
 ## Improving Moth: the feedback chain
 
-Every idea to improve Moth gets one file in `feedback/`. Ideas can come from you, a reviewer, a CI check, or Moth itself.
+Every idea to improve Moth gets one file in `.moth/feedback/`. Ideas can come from you, a reviewer, a CI check, or Moth itself.
 
 Each file answers 6 questions:
 
@@ -104,7 +109,7 @@ Each file answers 6 questions:
 5. What changed?
 6. How do we know it works?
 
-Open `feedback/INDEX.md` to see all ideas and their status.
+Open `.moth/feedback/INDEX.md` to see all ideas and their status.
 
 ## Why it exists
 

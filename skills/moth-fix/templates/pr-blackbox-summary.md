@@ -25,4 +25,4 @@ Fixes <TICKET-URL>
 ### Root cause
 <one or two sentences>
 
-Full log: `<workspace>/runs/<TICKET-ID>/blackbox.md`
+Full log (on the machine that ran Moth): `.moth/runs/<TICKET-ID>/blackbox.md`

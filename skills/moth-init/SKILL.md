@@ -1,31 +1,48 @@
 ---
 name: moth-init
-description: Use to set up or extend a Moth workspace ("moth init", "add a board / repo to Moth", "sync Moth guardrails"). Discovers repos, commands, MCP servers and tracker boards automatically, asks only for what it cannot detect, and writes system.yaml + .moth/guard.json.
+description: Use to set up or extend Moth in a project ("moth init", "add a board / repo to Moth", "sync Moth guardrails"). Creates a git-ignored .moth/ folder in the project, discovers repos, commands, MCP servers and tracker boards automatically, asks only for what it cannot detect, and writes .moth/system.yaml + .moth/guard.json.
 ---
 
-# Moth: init a workspace
+# Moth: init a project
 
-The goal is a working `system.yaml` with **as few questions as possible**. Detect first, ask second, and leave a `TODO` for anything still unknown.
+The goal is a working `.moth/system.yaml` with **as few questions as possible**. Detect first, ask second, and leave a `TODO` for anything still unknown.
 
 ## Modes
 
 | Invocation | What it does |
 |---|---|
-| `moth-init` | Creates a new workspace in the current directory, or resumes one if `system.yaml` exists |
-| `moth-init --add-repo <path>` | Detects one more repo and appends it |
+| `moth-init` | Creates `.moth/` in the current project, or resumes it if `.moth/system.yaml` exists |
+| `moth-init --add-repo <path>` | Detects one more repo (e.g. `../other-service`) and appends it |
 | `moth-init --add-board` | Lists tracker boards and appends the chosen one |
-| `moth-init --sync` | Regenerates `.moth/guard.json` from `system.yaml`, then reports the gaps |
+| `moth-init --sync` | Regenerates `.moth/guard.json` from `.moth/system.yaml`, then reports the gaps |
 
 **Never overwrite** a value marked `# confirmed`. Re-running init only adds new values or refines `# inferred` ones.
 
-## Step 0: Workspace location
+## Step 0: The `.moth/` folder
 
-The workspace must **not** be a service repo. If the current directory is inside a git repo with application code (it has `go.mod`, `package.json`, a `Makefile` with `test`...), stop and propose a sibling directory, e.g. `../<system>-moth/`, that lists the service repos as `repos.<name>.path: ../<service>/<subdir>`. Otherwise `runs/`, `knowledge/` and the media end up in the service repo, and step 7 of `moth-fix` ("commit to the workspace repo") would commit them to its main branch. If the user insists on the service repo, add `system.yaml`, `.moth/`, `runs/` and `knowledge/` to its `.git/info/exclude` and never commit them.
+Moth lives in one folder at the project root (the git top level of the current directory):
+
+```
+<project>/
+  .gitignore     ← contains the line `.moth/`
+  .moth/
+    system.yaml    repos, commands, tools, rules
+    guard.json     generated from system.yaml, read by the guard hook
+    runs/          a Blackbox for every run
+    knowledge/     one note per fixed bug
+    feedback/      every idea for improving Moth
+```
+
+1. Create `.moth/` at the project root. Don't ask.
+2. If `.gitignore` doesn't already ignore `.moth/`, append the line `.moth/` to it. Don't touch anything else in `.gitignore`, and don't commit it: tell the user to commit that one line.
+3. Run `git check-ignore -q .moth/system.yaml`. If it isn't ignored, stop and say why.
+
+`.moth/` is never committed, so Moth files can't leak into a fix branch.
 
 ## Step 1: Detect (no questions yet)
 
 ### Repos
-For every repo path the user gave, or every repo under `repos/`:
+The project itself is the first repo, with `path: .`. Add every extra repo path the user gave (e.g. `../web-app` for a multi-repo system). Paths in `system.yaml` are relative to the project root, not to `.moth/`. For each repo:
 - **Language**: from `go.mod`, `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml` / `build.gradle`.
 - **`run` / `test` / `test_one` / `e2e`**: from Makefile targets (`make -qp` or by reading the `Makefile`), `package.json` scripts, `justfile`, `Taskfile.yml`. Prefer the targets named `run`, `dev`, `test`, `test:run`, `test:e2e`.
 - **`playwright_dir`**: from the `testDir` in `playwright.config.*`.
@@ -76,8 +93,8 @@ For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a
 
 ## Step 4: Write
 
-1. Write `system.yaml`. Use `examples/system.yaml` in this plugin as the shape, and mark every value `# inferred`, `# confirmed` or `TODO`.
-2. Generate `.moth/guard.json` from `system.yaml`:
+1. Write `.moth/system.yaml`. Use `examples/system.yaml` in this plugin as the shape, and mark every value `# inferred`, `# confirmed` or `TODO`.
+2. Generate `.moth/guard.json` from `.moth/system.yaml`:
    ```json
    {
      "read_only_mcp": ["<every MCP named under environments.staging/prod.read_only>"],
@@ -85,8 +102,8 @@ For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a
    }
    ```
    The Moth `PreToolUse` hook reads this file. Writes through a read-only MCP, force pushes, pushes to main/master and `gh pr merge` are then denied.
-3. Create `runs/` and `knowledge/INDEX.md` if they are missing. `INDEX.md` starts with a `# Knowledge index` header and nothing else.
-4. Create `feedback/INDEX.md` if it is missing:
+3. Create `.moth/runs/` and `.moth/knowledge/INDEX.md` if they are missing. `INDEX.md` starts with a `# Knowledge index` header and nothing else.
+4. Create `.moth/feedback/INDEX.md` if it is missing:
    ```markdown
    # Feedback chain
 
@@ -102,4 +119,5 @@ For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a
    - every value marked `# inferred`, for the user to confirm,
    - every `TODO`,
    - the gap report,
+   - whether `.gitignore` was changed (the user commits that one line),
    - the exact next command: `/moth:moth-fix <TICKET-ID>`.

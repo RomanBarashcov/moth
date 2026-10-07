@@ -1,6 +1,6 @@
 ---
 name: moth-fix
-description: Use when asked to fix a bug ticket end-to-end ("moth fix ACME-123", a ticket labeled `moth`). Runs intake → env → reproduce → fix → evidence → PR inside a Moth workspace, always writing a Blackbox run log.
+description: Use when asked to fix a bug ticket end-to-end ("moth fix ACME-123", a ticket labeled `moth`). Runs intake → env → reproduce → fix → evidence → PR in a project with Moth set up, always writing a Blackbox run log.
 ---
 
 # Moth: fix a bug ticket
@@ -9,8 +9,8 @@ You take one bug ticket and drive it to a PR **autonomously**. A human only revi
 
 ## Preconditions
 
-- The current directory is a **Moth workspace**: it contains `system.yaml`, `runs/` and `knowledge/`. If `system.yaml` or `.moth/guard.json` is missing, stop and tell the user to run `/moth:moth-init`.
-- Read `system.yaml` first. It is the only source of truth for repos, environments, MCP servers, tracker and guardrails. Never guess a command that is not in it.
+- Run from the project root. All Moth files live in its git-ignored `.moth/` folder; every `runs/`, `knowledge/` and `feedback/` path below is inside `.moth/`. If `.moth/system.yaml` or `.moth/guard.json` is missing, stop and tell the user to run `/moth:moth-init`.
+- Read `.moth/system.yaml` first. Repo paths in it are relative to the project root. It is the only source of truth for repos, environments, MCP servers, tracker and guardrails. Never guess a command that is not in it.
 - If a value you need is `TODO`, stop with `missing-config` and name the exact key in the Blackbox.
 
 ## Pipeline
@@ -52,14 +52,14 @@ When any stage fails, jump to **Stop** and do not continue.
 
 ### 5. Evidence
 1. For UI bugs, run the Playwright spec twice, each with its own `--output` dir:
-   - **before**: on the base commit, with the fix stashed (`git stash push -u -- <fix paths>`), `--output runs/<TICKET-ID>/media/before`,
-   - **after**: on the fix commit, `--output runs/<TICKET-ID>/media/after`.
+   - **before**: on the base commit, with the fix stashed (`git stash push -u -- <fix paths>`), `--output .moth/runs/<TICKET-ID>/media/before`,
+   - **after**: on the fix commit, `--output .moth/runs/<TICKET-ID>/media/after`.
    The spec must record `video: 'on'` and `screenshot: 'on'` so passing tests keep media too.
 2. Collect and publish the media with `scripts/collect-evidence.sh` (in this skill's directory):
    ```bash
-   collect-evidence.sh collect runs/<ID>/media/before runs/<ID>/media/after runs/<ID>/evidence
-   BASE=$(collect-evidence.sh publish <service-repo> runs/<ID>/evidence <ID> "<evidence.branch>")
-   collect-evidence.sh markdown runs/<ID>/evidence "$BASE"   # paste into the PR body
+   collect-evidence.sh collect .moth/runs/<ID>/media/before .moth/runs/<ID>/media/after .moth/runs/<ID>/evidence
+   BASE=$(collect-evidence.sh publish <service-repo> .moth/runs/<ID>/evidence <ID> "<evidence.branch>")
+   collect-evidence.sh markdown .moth/runs/<ID>/evidence "$BASE"   # paste into the PR body
    ```
    `publish` commits to the orphan branch `evidence.branch` from `system.yaml` (default `moth-evidence`) through a temporary index. It never touches the working tree or the fix branch, and that branch is never merged. Its URLs are pinned to the evidence commit, so the PR keeps rendering after the fix branch is deleted.
 3. **Look at the after screenshot** before using it. It must show the fixed behaviour (e.g. the success toast), not a blank or loading page. If it doesn't, add an explicit `page.screenshot()` at the moment that proves the fix and re-run.
@@ -68,7 +68,7 @@ When any stage fails, jump to **Stop** and do not continue.
 ### 6. PR
 1. Open one PR per touched repo with `gh pr create` (draft when step 4 says so). Pass the body with `--body-file`, never inline.
 2. Build the PR description from `templates/pr-blackbox-summary.md`, including the evidence table from step 5. A UI fix PR without before/after images is incomplete.
-3. **Never commit Moth files to the fix branch.** That covers the Blackbox, the knowledge record and the media. Media goes only to the evidence branch.
+3. **Never commit Moth files to the fix branch.** That covers the Blackbox, the knowledge record and the media. `.moth/` is git-ignored; never `git add -f` it. Media goes only to the evidence branch.
 4. Comment on the ticket with the PR links.
 5. Run the repo's quality checks on the PR (`gh pr checks`). If a check fails and its details aren't readable (for example, a private code-quality project and no API token), ask the user for the finding text instead of guessing fixes.
 
@@ -78,7 +78,7 @@ When any stage fails, jump to **Stop** and do not continue.
    - write `knowledge/<TICKET-ID>-<slug>.md` from `templates/knowledge-record.md`,
    - add one line to `knowledge/INDEX.md`.
 3. Make sure every improvement raised during the run has a feedback record (see **Feedback chain**), and list their IDs in the Blackbox under "Suggested improvement".
-4. Commit these to the workspace repo (never to a service repo).
+4. Leave these in `.moth/`. Don't commit them.
 
 ## Feedback chain
 

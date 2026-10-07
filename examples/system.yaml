@@ -10,13 +10,13 @@ tracker:
 
 repos:                      # any language; moth-init detects these from the repo
   service-a:
-    path: ../service-a      # sibling of the workspace, not inside it
+    path: .                 # the project Moth runs in; paths are relative to it
     language: <language>    # e.g. the stack detected from go.mod, package.json, pyproject.toml...
     run: <start command>    # e.g. make run
     test: <full test command>
     test_one: <one test command, {name} = test name>
   service-b:
-    path: ../service-b
+    path: ../service-b      # other repos of the same system, if any
     language: <language>
     run: <start command>
     test: <full test command>
