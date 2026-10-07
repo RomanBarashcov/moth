@@ -5,7 +5,7 @@ description: Use when asked to fix a bug ticket end-to-end ("moth fix ACME-123",
 
 # Moth: fix a bug ticket
 
-You take one bug ticket and drive it to a PR **autonomously**. A human only reviews the PR. Every run ends with a Blackbox report, **whether it succeeded or failed**: in the PR description, or as a ticket comment when it stops. That's where people look, so that's where it goes. Nothing stays on disk except one knowledge note per fixed bug.
+You take one bug ticket and drive it to a PR **autonomously**. A human only reviews the PR. Every run ends with a Blackbox report, **whether it succeeded or failed**: in the PR description, or as a ticket comment when it stops. That's where people look, so that's where it goes. Nothing stays on disk except one knowledge note per fixed bug and one line in `.moth/metrics.jsonl` per run.
 
 ## Preconditions
 
@@ -101,11 +101,12 @@ When any stage fails, jump to **Stop** and do not continue.
    Don't commit them.
 2. Append one line to `.moth/metrics.jsonl` (create it if missing). It is how `/moth:moth-stats` measures what the judge adds:
    ```json
-   {"kind":"fix","ticket":"<ID>","at":"<ISO time>","own_tests_green":true,"rounds":[{"verdict":"not-satisfied","satisfaction":0.72},{"verdict":"satisfied","satisfaction":0.97}],"outcome":"pr","prs":["<PR URL>"]}
+   {"kind":"fix","ticket":"<ID>","at":"<ISO time>","own_tests_green":true,"rounds":[{"verdict":"not-satisfied","satisfaction":0.72},{"verdict":"satisfied","satisfaction":0.97}],"outcome":"pr","stop_category":null,"prs":["<PR URL>"]}
    ```
    - `own_tests_green`: your regression test and the full suites passed before the first Verify.
    - `rounds`: one entry per Verify, in order. `verdict` is `satisfied`, `not-satisfied` or `inconclusive`.
-   - `outcome`: `pr`, `draft-pr` or `stopped`.
+   - `outcome`: `pr`, `draft-pr` or `stopped`. `stop_category`: `null`, or the category from `templates/blackbox.md` when stopped.
+   - `prs`: the PR URLs, `[]` if none were opened.
 3. `rm -rf "$SCRATCH"`. The proof now lives in the PR and on the evidence branch.
 
 ## Stop
@@ -120,7 +121,7 @@ Use Stop for any failure, and for hitting a guardrail limit (`guardrails.max_tur
    - **where the workflow was invalid** (the gap in process, config or skill, not in the code),
    - a suggested improvement to Moth, if any.
 2. Comment the filled Blackbox on the ticket: what you checked, your hypotheses, and where the workflow was invalid. Attach the key test output inline.
-3. If Verify ran at least once, append the metrics line as in step 8.2, with `"outcome":"stopped"` and the `stop_category`.
+3. If Verify ran at least once, append the metrics line as in step 8.2, with `"outcome":"stopped"`, the `stop_category` and `"prs":[]`.
 4. `rm -rf "$SCRATCH"`.
 5. **A failure that leaves no trail is a bug in Moth.**
 

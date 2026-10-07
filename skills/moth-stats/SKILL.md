@@ -11,9 +11,9 @@ Show what the independent judge adds, from `.moth/metrics.jsonl` (one line per `
 
 1. Run from the project root:
    ```bash
-   python3 <moth-fix skill dir>/scripts/judge-stats.py .moth/metrics.jsonl --gh
+   python3 <this skill's dir>/scripts/judge-stats.py .moth/metrics.jsonl --gh
    ```
-   `--gh` checks each PR's state with `gh pr view`. Drop it if `gh` isn't logged in, and say so.
+   `--gh` checks each PR's state with `gh pr view`. If the output says "PR outcomes unavailable", tell the user why (e.g. run `gh auth login`).
 2. Exit code 2 means there's no log or no usable lines yet. Tell the user to run `/moth:moth-fix` on a ticket first.
 3. Show the output as is. Then add **one** line that reads it for the user, for example:
    - "The judge caught 3 of 12 fixes that your tests passed; 2 of those were merged after the second round."
