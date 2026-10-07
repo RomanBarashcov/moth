@@ -322,6 +322,8 @@ class HoldoutTest(unittest.TestCase):
             ("Grep", {"pattern": "ACME"}),
             ("Glob", {"pattern": "src/**/*.go"}),
             ("Bash", {"command": "cat .moth/system.yaml"}),
+            ("Bash", {"command": "echo '{}' >> .moth/metrics.jsonl"}),
+            ("Write", {"file_path": ".moth/metrics.jsonl", "content": "{}"}),
             ("Bash", {"command": "grep -rn ACME src"}),
             ("Bash", {"command": "find src -name '*.go'"}),
             ("Bash", {"command": "rg ACME"}),

@@ -29,6 +29,7 @@ Moth lives in one folder at the project root (the git top level of the current d
     system.yaml    repos, commands, tools, rules
     guard.json     generated from system.yaml, read by the guard hook
     knowledge/     one note per fixed bug
+    metrics.jsonl  one line per fix or retest, for /moth:moth-stats
     scenarios/     one folder per ticket: holdout scenarios
 ```
 

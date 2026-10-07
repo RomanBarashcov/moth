@@ -17,7 +17,7 @@ You take one ticket whose fix is merged or in an open PR, and show **with fresh 
 
 ## Preconditions
 
-- Same as `moth-fix`: run from the project root, `.moth/system.yaml` and `.moth/guard.json` exist (otherwise tell the user to run `/moth:moth-init`). Nothing is written to the project except holdout scenarios the scenario writer may add in step 4: scratch output goes to `SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-retest-<TICKET-ID>.XXXXXX")`, deleted at the end.
+- Same as `moth-fix`: run from the project root, `.moth/system.yaml` and `.moth/guard.json` exist (otherwise tell the user to run `/moth:moth-init`). Nothing is written to the project except holdout scenarios the scenario writer may add in step 4 and one line in `.moth/metrics.jsonl` in step 8: scratch output goes to `SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-retest-<TICKET-ID>.XXXXXX")`, deleted at the end.
 - Only the `local` environment. Staging and prod stay read-only, because a Playwright spec clicks buttons and writes data.
 - If a value you need is `TODO`, stop with `missing-config` and name the key in the report.
 
@@ -75,7 +75,12 @@ Let `<STAMP>` be the current time as `YYYYMMDD-HHMM`.
 2. On ❌, don't reopen the ticket or change its status. Suggest `/moth:moth-fix <TICKET-ID>`, and link this report as the starting point.
 
 ### 8. Clean up
-Stop the local stack, remove the worktrees and `rm -rf "$SCRATCH"`.
+1. Append one line to `.moth/metrics.jsonl`:
+   ```json
+   {"kind":"retest","ticket":"<ID>","at":"<ISO time>","verdict":"works","own_tests_green":true,"judge":"satisfied","satisfaction":0.95}
+   ```
+   `own_tests_green`: the regression tests and spec passed. `judge`: the verifier's verdict, or `inconclusive` if it didn't run.
+2. Stop the local stack, remove the worktrees and `rm -rf "$SCRATCH"`.
 
 ## Hard rules
 
