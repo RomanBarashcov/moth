@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/moth-matrix.svg" alt="Moth: a moth drawn in falling green matrix glyphs" width="100%">
+  <img src="assets/moth-matrix.svg" alt="Moth: a moth drawn in falling green matrix glyphs, in front of the Harvard Mark II relay panels" width="100%">
 </p>
 
 # Moth
@@ -27,14 +27,14 @@ A Claude Code plugin. It reproduces the bug, writes a failing test, fixes it, ha
    > /moth:moth-fix ACME-123
    ```
 
-Update: `claude plugin marketplace update moth`, then `claude plugin update moth@moth` and restart Claude Code. Hacking on Moth itself: `claude --plugin-dir .` from this repo.
+Update (from the project root): `claude plugin marketplace update moth`, then `claude plugin update moth@moth` and restart Claude Code. Coming from 0.2.x? Run `/moth:moth-init` once: it moves `system.yaml` and `knowledge/` into `.moth/` and asks before deleting the old `runs/` and `feedback/`. Hacking on Moth itself: `claude --plugin-dir .` from this repo.
 
 Config example: [`examples/system.yaml`](examples/system.yaml).
 
 ## What you get in the PR
 
 - 🔴→🟢 **A test** that fails before the fix and passes after it.
-- 🎭 **A Playwright spec** you can re-run: `npx playwright test bugs/ACME-123.spec.ts --headed`.
+- 🎭 **A Playwright spec** you can re-run from the Playwright config's folder: `npx playwright test bugs/ACME-123 --headed`.
 - 🖼️ **Before/after screenshots and GIFs** in the description.
 - ⚖️ **Independent verification:** holdout scenarios, satisfaction score, judge notes.
 - 🧭 **A short report:** verdict, confidence, what a human needs to check.
@@ -69,7 +69,7 @@ The report shows up in the chat. Add `--post` to put it on the ticket, `--on <br
 ## How a run goes
 
 ```mermaid
-flowchart LR
+flowchart TD
     T([🎫 Ticket]) --> I{Clear what<br/>should happen?}
     I -- no --> Q[❓ Ask on the ticket]
 
@@ -137,7 +137,7 @@ your-project/
 
 That's all. Test output and media live in a temp dir during a run and are deleted after it. The proof is in the PR, where reviewers look.
 
-Several repos? Run Moth from one of them and list the others in `system.yaml` (`path: ../web-app`).
+Several repos? Run Moth from one of them and list the others in `system.yaml` (`path: ../web-app`). Monorepo? `moth-init` records each app's `playwright_config`, and Moth runs Playwright from that folder.
 
 Screenshots go to a separate `moth-evidence` branch. It is never merged, so no images end up in your code.
 
@@ -145,7 +145,7 @@ Screenshots go to a separate `moth-evidence` branch. It is never merged, so no i
 
 `moth-init` checks for these and gives install commands:
 
-- `linear` or `atlassian`: read tickets
+- A tracker: the `linear` or `atlassian` plugin, any other tracker MCP, or `gh` for GitHub issues
 - `playwright`: screenshots and videos
 - `superpowers`: TDD and debugging
 - Sentry, Axiom or Grafana MCP: read-only logs and errors
@@ -155,7 +155,7 @@ Screenshots go to a separate `moth-evidence` branch. It is never merged, so no i
 
 AI writes code from the code it sees. If that code has bugs, AI copies them. Moth breaks the loop: every bug gets a test, a fix and a note, so the next session sees the right pattern.
 
-> **The name:** in 1947, engineers found a moth stuck in the Harvard Mark II computer. They taped it into the logbook as the *"first actual case of bug being found"*. Every Moth run is logged too.
+> **The name:** in 1947, engineers found a moth stuck in the Harvard Mark II computer. It was stuck in Relay #70, Panel F, the panel behind the moth in the banner. They taped it into the logbook as the *"first actual case of bug being found"*. Every Moth run is logged too.
 
 ## What's next
 
