@@ -29,6 +29,9 @@ HEREDOC = re.compile(
 MAX_DEPTH = 5
 # Plugin agents arrive as "<plugin>:<agent>"; a bare name could be any user or project agent.
 HOLDOUT_AGENTS = {"moth:moth-scenario-writer", "moth:moth-verifier"}
+# The holdout check stops accidental reads (a project-wide grep, a cat of the folder) and the
+# common evasions. It is not a sandbox: an interpreter one-liner that builds the path at run
+# time (python -c "open('.mo'+'th/...')") still gets through. The skills forbid that outright.
 HOLDOUT_SAFE = re.compile(r"/(system\.yaml|guard\.json|knowledge(/[^*?\[]*)?)", re.IGNORECASE)
 MOTH_REF = re.compile(r"\.moth([^\s'\";|&()<>`]*)", re.IGNORECASE)
 ALWAYS_RECURSIVE = {"find", "tree", "du", "rsync", "tar", "zip", "rgrep", "ack"}
@@ -294,6 +297,9 @@ def check_simple(words, cwd, depth):
         return cwd
     name = program(words[0])
     if holdout_dir:
+        # words are already unquoted, so .mo''th and .mo\\th show up as .moth here
+        for word in words:
+            check_holdout_text(word)
         check_holdout_words(name, words[1:], cwd)
     if UNVERIFIABLE.search(name) and any(w.lower() in SENSITIVE_VERBS for w in words[1:]):
         raise Denied("command name uses shell expansion; name the program literally")

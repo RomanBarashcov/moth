@@ -291,6 +291,10 @@ class HoldoutTest(unittest.TestCase):
             ("Grep", {"pattern": "x", "path": ".Moth/SCENARIOS"}),
             ("Bash", {"command": "git grep --no-index Then"}),
             ("Bash", {"command": "rgrep Then"}),
+            ("Bash", {"command": "cat .mo''th/scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "cat .mo\\th/scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "cat \".mo\"th/scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "sh -c 'cat .mo\"\"th/scen*/*/*'"}),
         ]
         for tool, tool_input in denied:
             with self.subTest(tool=tool, tool_input=tool_input):
