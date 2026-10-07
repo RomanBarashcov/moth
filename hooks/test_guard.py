@@ -284,11 +284,19 @@ class HoldoutTest(unittest.TestCase):
             ("Bash", {"command": "find . -name '*.md'"}),
             ("Bash", {"command": "rg --hidden --no-ignore ACME"}),
             ("Bash", {"command": "cd src && grep -r ACME .."}),
+            ("Bash", {"command": "cat .moth/knowledge/../scenarios/ACME-1/scenarios.md"}),
+            ("Read", {"file_path": ".moth/knowledge/../scenarios/ACME-1/scenarios.md"}),
+            ("Bash", {"command": "cat .MOTH/Scenarios/ACME-1/scenarios.md"}),
+            ("Read", {"file_path": ".MOTH/Scenarios/ACME-1/scenarios.md"}),
+            ("Grep", {"pattern": "x", "path": ".Moth/SCENARIOS"}),
+            ("Bash", {"command": "git grep --no-index Then"}),
+            ("Bash", {"command": "rgrep Then"}),
         ]
         for tool, tool_input in denied:
             with self.subTest(tool=tool, tool_input=tool_input):
                 self.assertTrue(self.run_hook(tool, tool_input))
-                self.assertTrue(self.run_hook(tool, tool_input, agent_type="general-purpose"))
+                for impostor in ("general-purpose", "moth-verifier", "other:moth-verifier", "moth:other"):
+                    self.assertTrue(self.run_hook(tool, tool_input, agent_type=impostor))
 
     def test_fixer_keeps_normal_access(self):
         allowed = [
@@ -309,7 +317,7 @@ class HoldoutTest(unittest.TestCase):
                 self.assertFalse(self.run_hook(tool, tool_input))
 
     def test_scenario_writer_and_verifier_may_read(self):
-        for agent in ("moth-scenario-writer", "moth-verifier", "moth:moth-verifier"):
+        for agent in ("moth:moth-scenario-writer", "moth:moth-verifier"):
             with self.subTest(agent=agent):
                 self.assertFalse(self.run_hook("Read", {"file_path": self.scenario()}, agent))
                 self.assertFalse(self.run_hook("Write", {"file_path": self.scenario(), "content": "x"}, agent))

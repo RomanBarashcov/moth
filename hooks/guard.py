@@ -27,13 +27,14 @@ HEREDOC = re.compile(
     re.DOTALL,
 )
 MAX_DEPTH = 5
-HOLDOUT_AGENTS = {"moth-scenario-writer", "moth-verifier"}
-HOLDOUT_SAFE = re.compile(r"/(system\.yaml|guard\.json|knowledge(/[^*?\[]*)?)")
-MOTH_REF = re.compile(r"\.moth([^\s'\";|&()<>`]*)")
-ALWAYS_RECURSIVE = {"find", "tree", "du", "rsync", "tar", "zip"}
+# Plugin agents arrive as "<plugin>:<agent>"; a bare name could be any user or project agent.
+HOLDOUT_AGENTS = {"moth:moth-scenario-writer", "moth:moth-verifier"}
+HOLDOUT_SAFE = re.compile(r"/(system\.yaml|guard\.json|knowledge(/[^*?\[]*)?)", re.IGNORECASE)
+MOTH_REF = re.compile(r"\.moth([^\s'\";|&()<>`]*)", re.IGNORECASE)
+ALWAYS_RECURSIVE = {"find", "tree", "du", "rsync", "tar", "zip", "rgrep", "ack"}
 RECURSIVE_FLAGS = {"grep": "rR", "egrep": "rR", "fgrep": "rR", "ls": "R", "cp": "rRa", "scp": "r"}
 UNIGNORE_READERS = {"rg", "ag", "ack"}
-PATTERN_FIRST = {"grep", "egrep", "fgrep", "rg", "ag", "ack"}
+PATTERN_FIRST = {"grep", "egrep", "fgrep", "rgrep", "rg", "ag", "ack"}
 holdout_dir = None  # set in main() when the caller may not see the holdout scenarios
 SENSITIVE_VERBS = {"push", "merge"}
 UNVERIFIABLE = re.compile(r"[$`{}*?\[~]")
@@ -243,12 +244,15 @@ def check_gh(words):
 
 def check_holdout_text(text):
     for match in MOTH_REF.finditer(text):
-        if not HOLDOUT_SAFE.fullmatch(match.group(1)):
+        suffix = match.group(1)
+        if ".." in suffix or "\\" in suffix or not HOLDOUT_SAFE.fullmatch(suffix):
             raise Denied(".moth/ holds the holdout scenarios; only system.yaml, guard.json and knowledge/ are open to you")
 
 
 def inside(path, directory):
-    path, directory = os.path.realpath(path), os.path.realpath(directory)
+    # casefold: macOS and Windows file systems ignore case, so .MOTH/Scenarios is the same folder
+    path = os.path.realpath(path).casefold()
+    directory = os.path.realpath(directory).casefold()
     return path == directory or path.startswith(directory + os.sep)
 
 
@@ -264,6 +268,8 @@ def reads_recursively(name, args):
 
 
 def check_holdout_words(name, args, cwd):
+    if name == "git" and "grep" in args and any(a in ("--no-index", "--no-exclude-standard", "--untracked") for a in args):
+        raise Denied("git grep over untracked/ignored files would read .moth/scenarios/; search tracked files only")
     if not reads_recursively(name, args):
         return
     if name == "find":
@@ -385,8 +391,7 @@ def check_mcp(tool_name, guard):
 
 
 def holdout_allowed(payload):
-    agent = str(payload.get("agent_type") or "")
-    return agent.rsplit(":", 1)[-1] in HOLDOUT_AGENTS
+    return payload.get("agent_type") in HOLDOUT_AGENTS
 
 
 def check_file_tool(tool_name, tool_input, cwd):
