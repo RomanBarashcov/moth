@@ -35,7 +35,7 @@ HOLDOUT_AGENTS = {"moth:moth-scenario-writer", "moth:moth-verifier"}
 # The holdout check stops accidental reads (a project-wide grep, a cat of the folder) and the
 # common evasions. It is not a sandbox: an interpreter one-liner that builds the path at run
 # time (python -c "open('.mo'+'th/...')") still gets through. The skills forbid that outright.
-HOLDOUT_SAFE = re.compile(r"/(system\.yaml|guard\.json|knowledge(/[^*?\[]*)?)", re.IGNORECASE)
+HOLDOUT_SAFE = re.compile(r"/(system\.yaml|guard\.json|metrics\.jsonl|knowledge(/[^*?\[]*)?)", re.IGNORECASE)
 MOTH_REF = re.compile(r"\.moth([^\s'\";|&()<>`]*)", re.IGNORECASE)
 ALWAYS_RECURSIVE = {"find", "tree", "du", "rsync", "tar", "zip", "rgrep", "ack"}
 RECURSIVE_FLAGS = {"grep": "rR", "egrep": "rR", "fgrep": "rR", "ls": "R", "cp": "rRa", "scp": "r"}
@@ -254,7 +254,7 @@ def check_holdout_text(text):
     for match in MOTH_REF.finditer(text):
         suffix = match.group(1)
         if ".." in suffix or "\\" in suffix or not HOLDOUT_SAFE.fullmatch(suffix):
-            raise Denied(".moth/ holds the holdout scenarios; only system.yaml, guard.json and knowledge/ are open to you")
+            raise Denied(".moth/ holds the holdout scenarios; only system.yaml, guard.json, metrics.jsonl and knowledge/ are open to you")
 
 
 def expand_braces(word, limit=64):

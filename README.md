@@ -113,7 +113,7 @@ It's an old rule, *the one who builds doesn't sign off*, applied to agents:
 - 💸 **Cost:** 3 agents plus scenarios × variations × repeats. Overkill for a typo.
 - 🧠 **Same model, shared blind spots:** all three can be wrong the same way. A different model for the judge would help.
 - 🔓 **Soft isolation:** the guard hook blocks reads of `.moth/scenarios/`, but it checks command text; it isn't a sandbox.
-- 📏 **Unmeasured:** there's no metric yet for how often the judge catches what the tests missed.
+- 📏 **Is it worth it? Measure it:** `/moth:moth-stats` shows how often the judge caught a fix your tests passed, how many of those catches ended in a merged PR, and how often it passed a fix that later broke.
 
 ## Retest after the fix
 
@@ -155,6 +155,7 @@ your-project/
     system.yaml    repos, commands, tools, rules
     guard.json     safety rules for the hook
     knowledge/     one note per fixed bug
+    metrics.jsonl  one line per run, for /moth:moth-stats
     scenarios/     holdout scenarios, one folder per ticket
 ```
 
