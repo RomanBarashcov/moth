@@ -114,6 +114,7 @@ Enforced by a hook (`hooks/guard.py`), not by trust:
 
 - ❌ No push to `main`/`master`. No force push. No merge.
 - ❌ No writes to staging or prod. Read-only logs and errors only.
+- 🙈 Only the scenario writer and the judge can open `.moth/scenarios/`. The fixer is blocked from reading it, including by `grep -r` or `find` over the project.
 - 📝 Draft PR if the fix touches more than 10 files, a migration, or a public API.
 - ⏱️ Stops after ~45 min or 3 failed reproduce tries, and comments what it found.
 - 🔒 If the hook itself breaks, it blocks the command.

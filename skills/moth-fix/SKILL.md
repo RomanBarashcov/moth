@@ -121,5 +121,5 @@ Use Stop for any failure, and for hitting a guardrail limit (`guardrails.max_tur
 - No writes to staging or prod. No force push. No merge.
 - Never weaken or delete an existing test to get green.
 - Don't fix anything the ticket doesn't describe. Log it as a sibling bug instead.
-- Never read, edit or delete `.moth/scenarios/`. Only the scenario writer and the verifier touch it.
+- Never read, edit or delete `.moth/scenarios/`. Only the scenario writer and the verifier touch it. The guard hook denies it; if a search is denied for that reason, narrow its path instead of working around it.
 - Never mark a fix done on your own tests alone. The verifier judges it, not you.
