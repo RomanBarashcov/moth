@@ -1,6 +1,6 @@
 ---
 name: moth-fix
-description: Use when asked to fix a bug ticket end-to-end ("moth fix ACME-123", a ticket labeled `moth`). Runs intake → env → reproduce → fix → evidence → PR in a project with Moth set up, always ending with a Blackbox report in the PR or on the ticket.
+description: Use when asked to fix a bug ticket end-to-end ("moth fix ACME-123", a ticket labeled `moth`). Runs intake → env → reproduce → fix → evidence → independent verification → PR in a project with Moth set up, always ending with a Blackbox report in the PR or on the ticket.
 ---
 
 # Moth: fix a bug ticket
@@ -17,7 +17,7 @@ You take one bug ticket and drive it to a PR **autonomously**. A human only revi
 
 ## Pipeline
 
-Track the stages: `intake → env → reproduce → fix → evidence → pr → review`.
+Track the stages: `intake → env → reproduce → fix → evidence → verify → pr → review`.
 When any stage fails, jump to **Stop** and do not continue.
 
 ### 1. Intake
@@ -29,6 +29,10 @@ When any stage fails, jump to **Stop** and do not continue.
    - **Actual behaviour**, taken from the ticket.
    - The **suspected services**, taken from the `system.yaml` repo map.
 4. Stop with `vague-ticket` if expected vs actual can't be stated. Before stopping, comment the clarifying questions on the ticket and set the `needs-info` label.
+5. Spawn the `moth-scenario-writer` agent with the ticket ID and the project root. Do it now, before you reproduce or read any code.
+   - It writes holdout scenarios to `.moth/scenarios/<TICKET-ID>/scenarios.md` and returns one line.
+   - `vague-ticket`: stop as in step 4.
+   - **Never read `.moth/scenarios/`.** Not now, not later. Scenarios you have seen can't check your fix.
 
 ### 2. Env
 1. For each suspected repo, create a git worktree on branch `moth/<TICKET-ID>`.
@@ -67,14 +71,28 @@ When any stage fails, jump to **Stop** and do not continue.
 3. **Look at the after screenshot** before using it. It must show the fixed behaviour (e.g. the success toast), not a blank or loading page. If it doesn't, add an explicit `page.screenshot()` at the moment that proves the fix and re-run.
 4. For non-UI bugs, capture red and green test output, plus a request/response or log diff, and paste the short version into the PR body.
 
-### 6. PR
-1. Open one PR per touched repo with `gh pr create` (draft when step 4 says so). Pass the body with `--body-file`, never inline.
-2. Build the PR description from `templates/pr-blackbox-summary.md`, including the evidence table from step 5 and the full Blackbox in its collapsed `<details>` block. A UI fix PR without before/after images is incomplete.
+### 6. Verify
+1. Spawn the `moth-verifier` agent. Give it only:
+   - the ticket ID and the project root,
+   - each fix worktree path and its fix commit SHA (commit first; the tree must be clean),
+   - the running local stack,
+   - the path of this skill's `scripts/` directory.
+   Never send it the diff, your tests or your theory of the bug.
+2. It returns an **Independent verification** block: verdict, satisfaction score, and for each scenario its title, Then line and a judge note. That's all you get. You never see the scenarios' variations or its test code.
+3. ✅ **satisfied**: go to PR.
+4. ❌ **not satisfied**, or a score below `guardrails.min_satisfaction`: go back to **4. Fix** with the failing titles and Then lines, then redo Evidence and Verify.
+   - At most 2 rounds back to Fix. If the verifier still isn't satisfied, open a **draft** PR and say so under "Needs human input".
+5. ⚠️ **inconclusive**: fix the cause if it's yours (stack down, uncommitted fix) and run the verifier once more. Still inconclusive? Open a draft PR and say why.
+6. **Never edit, delete or regenerate the scenarios** to get a pass.
+
+### 7. PR
+1. Open one PR per touched repo with `gh pr create` (draft when step 4 or 6 says so). Pass the body with `--body-file`, never inline.
+2. Build the PR description from `templates/pr-blackbox-summary.md`, including the evidence table from step 5, the Independent verification block from step 6, and the full Blackbox in its collapsed `<details>` block. A UI fix PR without before/after images is incomplete.
 3. **Never commit Moth files to the fix branch.** That covers the knowledge record and the media. `.moth/` is git-ignored; never `git add -f` it. Media goes only to the evidence branch.
 4. Comment on the ticket with the PR links.
 5. Run the repo's quality checks on the PR (`gh pr checks`). If a check fails and its details aren't readable (for example, a private code-quality project and no API token), ask the user for the finding text instead of guessing fixes.
 
-### 7. Record and clean up
+### 8. Record and clean up
 1. If the run was fixed or partially fixed:
    - write `knowledge/<TICKET-ID>-<slug>.md` from `templates/knowledge-record.md`,
    - add one line to `knowledge/INDEX.md`.
@@ -101,3 +119,5 @@ Use Stop for any failure, and for hitting a guardrail limit (`guardrails.max_tur
 - No writes to staging or prod. No force push. No merge.
 - Never weaken or delete an existing test to get green.
 - Don't fix anything the ticket doesn't describe. Log it as a sibling bug instead.
+- Never read, edit or delete `.moth/scenarios/`. Only the scenario writer and the verifier touch it.
+- Never mark a fix done on your own tests alone. The verifier judges it, not you.

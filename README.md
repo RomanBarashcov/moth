@@ -41,6 +41,15 @@ Config example: [`examples/system.yaml`](examples/system.yaml).
 
 You review. You merge. Moth never merges.
 
+## How Moth proves a fix
+
+The agent that fixes a bug also writes its test, so a green test alone can fool itself. Moth adds two checks it can't fake:
+
+- 🙈 **Holdout scenarios.** A separate agent reads only the ticket, never the code, and writes acceptance scenarios with variations to `.moth/scenarios/<TICKET-ID>/`. The fixer never sees them.
+- ⚖️ **An independent judge.** Another agent, with no fix context, runs those scenarios against the fix, scores satisfaction over repeated runs, and looks at every screenshot. A passing test whose screenshot doesn't show the ticket's expected result counts as a fail.
+
+If the judge isn't satisfied, Moth goes back to fixing. After 2 rounds it opens a draft PR and says why. Retest runs the judge too.
+
 ## Retest after the fix
 
 ```bash
@@ -58,15 +67,15 @@ The report shows up in the chat. Add `--post` to put it on the ticket, `--on <br
 ## How a run goes
 
 ```
-ticket → reproduce → red test → fix → green test → screenshots → PR
+ticket → holdout scenarios → reproduce → red test → fix → green test → screenshots → judge → PR
 ```
 
 | Step | What Moth does |
 |---|---|
-| 1. Intake | Reads the ticket. Skips it if git already has a fix. Asks on the ticket if it's too vague. |
+| 1. Intake | Reads the ticket. Skips it if git already has a fix. Asks on the ticket if it's too vague. A separate agent writes holdout scenarios. |
 | 2. Reproduce | Writes a failing test from the ticket, before reading the code. Stops after 3 tries. |
 | 3. Fix | Makes the smallest change that turns the test green. Runs all tests. |
-| 4. Proof | Runs the Playwright spec on the old code and the new code. Puts both in the PR. |
+| 4. Proof | Runs the Playwright spec on the old code and the new code. An independent judge runs the holdout scenarios. Puts both in the PR. |
 | 5. Record | Puts the run report in the PR (or on the ticket if it stopped), writes a knowledge note, deletes its temp files. |
 
 ## Safety rules
@@ -92,6 +101,7 @@ your-project/
     system.yaml    repos, commands, tools, rules
     guard.json     safety rules for the hook
     knowledge/     one note per fixed bug
+    scenarios/     holdout scenarios, one folder per ticket
 ```
 
 That's all. Test output and media live in a temp dir during a run and are deleted after it. The proof is in the PR, where reviewers look.

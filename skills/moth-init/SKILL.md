@@ -29,7 +29,10 @@ Moth lives in one folder at the project root (the git top level of the current d
     system.yaml    repos, commands, tools, rules
     guard.json     generated from system.yaml, read by the guard hook
     knowledge/     one note per fixed bug
+    scenarios/     one folder per ticket: holdout scenarios
 ```
+
+`scenarios/<TICKET-ID>/scenarios.md` is written by the `moth-scenario-writer` agent from the ticket alone, and read only by the `moth-verifier` agent. The fixing agent never reads it.
 
 Nothing else. Test output and screenshots go to a temp dir during a run and are deleted after it; the proof lives in the PR.
 
@@ -104,7 +107,7 @@ For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a
    }
    ```
    The Moth `PreToolUse` hook reads this file. Writes through a read-only MCP, force pushes, pushes to main/master and `gh pr merge` are then denied.
-3. Create `.moth/knowledge/INDEX.md` if it is missing. `INDEX.md` starts with a `# Knowledge index` header and nothing else.
+3. Create `.moth/knowledge/INDEX.md` if it is missing. `INDEX.md` starts with a `# Knowledge index` header and nothing else. Create an empty `.moth/scenarios/`.
 4. Ask before creating the queue label in the tracker. The label is visible to the whole team.
 
 ## Step 5: Verify and summarize
