@@ -10,10 +10,11 @@
 # publish:  commits <dest-dir> as <TICKET-ID>/ onto an orphan branch
 #           (default `moth-evidence`, never merged) without touching the
 #           working tree, pushes it and prints the commit-pinned base URL.
-# markdown: prints a before/after table for the PR body from that base URL.
+# markdown: prints a before/after table for the PR body from that base URL,
+#           or a single "Now" column when <dest-dir> has no before-* files.
 set -euo pipefail
 
-USAGE_LINES='2,13p'
+USAGE_LINES='2,14p'
 GIF_FILTER='fps=8,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer'
 BROWSER_SUFFIX='-(chromium|firefox|webkit|Mobile-Chrome|Mobile-Safari)$'
 
@@ -64,10 +65,15 @@ markdown() {
   local dest=$1 base=$2 png name video
   local -a links=()
   url() { echo "$base/$1?raw=true"; }
-  row() { echo "| $1 | ![before]($(url "before-$2.$3")) | ![after]($(url "after-$2.$3")) |"; }
-
-  echo "| | Before (base) | After (fix) |"
-  echo "|---|---|---|"
+  if compgen -G "$dest/before-*" >/dev/null; then
+    row() { echo "| $1 | ![before]($(url "before-$2.$3")) | ![after]($(url "after-$2.$3")) |"; }
+    echo "| | Before (base) | After (fix) |"
+    echo "|---|---|---|"
+  else
+    row() { echo "| $1 | ![now]($(url "after-$2.$3")) |"; }
+    echo "| | Now |"
+    echo "|---|---|"
+  fi
   for png in "$dest"/after-*.png; do
     [ -f "$png" ] || continue
     name=${png##*/after-}

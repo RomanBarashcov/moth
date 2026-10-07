@@ -40,10 +40,7 @@ minutes: 0
 - One sentence: the gap in process / config / skill, not in the code. `none` if the run was clean.
 
 ## Suggested improvement
-- FB-<NNN>: <one line> (every item here has a record in `feedback/`)
-
-## Review outcome
-- (filled after human review) accepted | changes-requested | rejected — reason
+- <one line>, or `none`
 
 <!--
 Stop-category taxonomy:

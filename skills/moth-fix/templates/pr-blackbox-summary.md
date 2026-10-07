@@ -25,4 +25,8 @@ Fixes <TICKET-URL>
 ### Root cause
 <one or two sentences>
 
-Full log: `<workspace>/runs/<TICKET-ID>/blackbox.md`
+<details><summary>Full Blackbox</summary>
+
+<!-- templates/blackbox.md, filled in -->
+
+</details>

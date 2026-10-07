@@ -1,16 +1,18 @@
 ---
 name: moth-fix
-description: Use when asked to fix a bug ticket end-to-end ("moth fix ACME-123", a ticket labeled `moth`). Runs intake → env → reproduce → fix → evidence → PR inside a Moth workspace, always writing a Blackbox run log.
+description: Use when asked to fix a bug ticket end-to-end ("moth fix ACME-123", a ticket labeled `moth`). Runs intake → env → reproduce → fix → evidence → PR in a project with Moth set up, always ending with a Blackbox report in the PR or on the ticket.
 ---
 
 # Moth: fix a bug ticket
 
-You take one bug ticket and drive it to a PR **autonomously**. A human only reviews the PR. Every run ends with a Blackbox, **whether it succeeded or failed**.
+You take one bug ticket and drive it to a PR **autonomously**. A human only reviews the PR. Every run ends with a Blackbox report, **whether it succeeded or failed**: in the PR description, or as a ticket comment when it stops. That's where people look, so that's where it goes. Nothing stays on disk except one knowledge note per fixed bug.
 
 ## Preconditions
 
-- The current directory is a **Moth workspace**: it contains `system.yaml`, `runs/` and `knowledge/`. If `system.yaml` or `.moth/guard.json` is missing, stop and tell the user to run `/moth:moth-init`.
-- Read `system.yaml` first. It is the only source of truth for repos, environments, MCP servers, tracker and guardrails. Never guess a command that is not in it.
+- Run from the project root. Moth's config lives in its git-ignored `.moth/` folder; `knowledge/` below means `.moth/knowledge/`. If `.moth/system.yaml` or `.moth/guard.json` is missing, stop and tell the user to run `/moth:moth-init`.
+- Put every scratch file (test output, Playwright media) in `SCRATCH=$(mktemp -d -t moth-<TICKET-ID>)`, never in the project. It is deleted when the run ends.
+- Keep the Blackbox (`templates/blackbox.md`) as notes during the run. Don't write it to a file.
+- Read `.moth/system.yaml` first. Repo paths in it are relative to the project root. It is the only source of truth for repos, environments, MCP servers, tracker and guardrails. Never guess a command that is not in it.
 - If a value you need is `TODO`, stop with `missing-config` and name the exact key in the Blackbox.
 
 ## Pipeline
@@ -52,14 +54,14 @@ When any stage fails, jump to **Stop** and do not continue.
 
 ### 5. Evidence
 1. For UI bugs, run the Playwright spec twice, each with its own `--output` dir:
-   - **before**: on the base commit, with the fix stashed (`git stash push -u -- <fix paths>`), `--output runs/<TICKET-ID>/media/before`,
-   - **after**: on the fix commit, `--output runs/<TICKET-ID>/media/after`.
+   - **before**: on the base commit, with the fix stashed (`git stash push -u -- <fix paths>`), `--output $SCRATCH/before`,
+   - **after**: on the fix commit, `--output $SCRATCH/after`.
    The spec must record `video: 'on'` and `screenshot: 'on'` so passing tests keep media too.
 2. Collect and publish the media with `scripts/collect-evidence.sh` (in this skill's directory):
    ```bash
-   collect-evidence.sh collect runs/<ID>/media/before runs/<ID>/media/after runs/<ID>/evidence
-   BASE=$(collect-evidence.sh publish <service-repo> runs/<ID>/evidence <ID> "<evidence.branch>")
-   collect-evidence.sh markdown runs/<ID>/evidence "$BASE"   # paste into the PR body
+   collect-evidence.sh collect $SCRATCH/before $SCRATCH/after $SCRATCH/evidence
+   BASE=$(collect-evidence.sh publish <service-repo> $SCRATCH/evidence <ID> "<evidence.branch>")
+   collect-evidence.sh markdown $SCRATCH/evidence "$BASE"   # paste into the PR body
    ```
    `publish` commits to the orphan branch `evidence.branch` from `system.yaml` (default `moth-evidence`) through a temporary index. It never touches the working tree or the fix branch, and that branch is never merged. Its URLs are pinned to the evidence commit, so the PR keeps rendering after the fix branch is deleted.
 3. **Look at the after screenshot** before using it. It must show the fixed behaviour (e.g. the success toast), not a blank or loading page. If it doesn't, add an explicit `page.screenshot()` at the moment that proves the fix and re-run.
@@ -67,37 +69,17 @@ When any stage fails, jump to **Stop** and do not continue.
 
 ### 6. PR
 1. Open one PR per touched repo with `gh pr create` (draft when step 4 says so). Pass the body with `--body-file`, never inline.
-2. Build the PR description from `templates/pr-blackbox-summary.md`, including the evidence table from step 5. A UI fix PR without before/after images is incomplete.
-3. **Never commit Moth files to the fix branch.** That covers the Blackbox, the knowledge record and the media. Media goes only to the evidence branch.
+2. Build the PR description from `templates/pr-blackbox-summary.md`, including the evidence table from step 5 and the full Blackbox in its collapsed `<details>` block. A UI fix PR without before/after images is incomplete.
+3. **Never commit Moth files to the fix branch.** That covers the knowledge record and the media. `.moth/` is git-ignored; never `git add -f` it. Media goes only to the evidence branch.
 4. Comment on the ticket with the PR links.
 5. Run the repo's quality checks on the PR (`gh pr checks`). If a check fails and its details aren't readable (for example, a private code-quality project and no API token), ask the user for the finding text instead of guessing fixes.
 
-### 7. Record
-1. Write `runs/<TICKET-ID>/blackbox.md` from `templates/blackbox.md`.
-2. If the run was fixed or partially fixed:
+### 7. Record and clean up
+1. If the run was fixed or partially fixed:
    - write `knowledge/<TICKET-ID>-<slug>.md` from `templates/knowledge-record.md`,
    - add one line to `knowledge/INDEX.md`.
-3. Make sure every improvement raised during the run has a feedback record (see **Feedback chain**), and list their IDs in the Blackbox under "Suggested improvement".
-4. Commit these to the workspace repo (never to a service repo).
-
-## Feedback chain
-
-Moth improves through the proposals people and checks make while it works. Record each one **when it is raised**, not at the end of the run, so the reasoning isn't lost.
-
-**What counts:** any proposal to change *how Moth works*: its process, skills, config, guard or templates. It can come from:
-- the user, mid-run ("add the screenshots to the PR"),
-- a PR reviewer or a ticket comment,
-- a CI or quality check (`ci:<check-name>`),
-- a security review,
-- you, when you hit a gap ("guard blocked a legitimate push").
-
-A product-code fix requested in review is *not* feedback by itself. Record it only if it reveals a workflow gap (e.g. "no security pass before the PR").
-
-**How:**
-1. Take the next free number from `feedback/INDEX.md` and write `feedback/FB-<NNN>-<slug>.md` from `templates/feedback-record.md`: problem, motivation, proposal (quote humans verbatim, names → roles), decision, output, verification.
-2. Add one row to `feedback/INDEX.md`: `| FB-NNN | date | source | area | status | one-line problem → output |`.
-3. When the proposal is implemented later, update `status`, **Output** (files, commits) and **Verification** in the same record. Don't open a new one.
-4. If two proposals conflict (e.g. "store media in the repo" → "don't merge media into code"), keep both records and link the later one to the earlier one in **Decision**. The chain of decisions is the point.
+   Don't commit them.
+2. `rm -rf "$SCRATCH"`. The proof now lives in the PR and on the evidence branch.
 
 ## Stop
 
@@ -109,9 +91,10 @@ Use Stop for any failure, and for hitting a guardrail limit (`guardrails.max_tur
    - `verdict`,
    - what you tried,
    - **where the workflow was invalid** (the gap in process, config or skill, not in the code),
-   - a suggested improvement.
-2. Comment on the ticket: what you checked, your hypotheses, and the link to the Blackbox.
-3. **A failure that leaves no trail is a bug in Moth.**
+   - a suggested improvement to Moth, if any.
+2. Comment the filled Blackbox on the ticket: what you checked, your hypotheses, and where the workflow was invalid. Attach the key test output inline.
+3. `rm -rf "$SCRATCH"`.
+4. **A failure that leaves no trail is a bug in Moth.**
 
 ## Hard rules
 
