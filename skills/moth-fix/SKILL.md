@@ -1,11 +1,11 @@
 ---
 name: moth-fix
-description: Use when asked to fix a bug ticket end-to-end ("moth fix ACME-123", a ticket labeled `moth`). Runs intake → env → reproduce → fix → evidence → independent verification → PR in a project with Moth set up, always ending with a Blackbox report in the PR or on the ticket.
+description: Use when asked to fix a bug ticket end-to-end ("moth fix ACME-123", a ticket labeled `moth`). Runs intake → env → reproduce → fix → evidence → independent verification → PR in a project with Moth set up, always ending with a short report in the PR or on the ticket.
 ---
 
 # Moth: fix a bug ticket
 
-You take one bug ticket and drive it to a PR **autonomously**. A human only reviews the PR. Every run ends with a Blackbox report, **whether it succeeded or failed**: in the PR description, or as a ticket comment when it stops. That's where people look, so that's where it goes. Nothing stays on disk except one knowledge note per fixed bug and one line in `.moth/metrics.jsonl` per run.
+You take one bug ticket and drive it to a PR **autonomously**. A human only reviews the PR. Every run ends with a report, **whether it succeeded or failed**: in the PR description, or as a ticket comment when it stops. That's where people look, so that's where it goes. The report is layered: what broke, what changed and what to check come first; the full Blackbox run log comes last, collapsed. Nothing stays on disk except one knowledge note per fixed bug and one line in `.moth/metrics.jsonl` per run.
 
 ## Preconditions
 
@@ -89,7 +89,7 @@ When any stage fails, jump to **Stop** and do not continue.
 
 ### 7. PR
 1. Open one PR per touched repo with `gh pr create` (draft when step 4 or 6 says so). Pass the body with `--body-file`, never inline.
-2. Build the PR description from `templates/pr-blackbox-summary.md`, including the evidence table from step 5, the Independent verification block from step 6, and the full Blackbox in its collapsed `<details>` block. A UI fix PR without before/after images is incomplete.
+2. Build the PR description from `templates/pr-description.md`: the 4-line summary first, then the evidence table from step 5, then the root cause. The Independent verification block from step 6, the repro steps and the full Blackbox go in collapsed `<details>` blocks. A reviewer who reads only the top 4 lines must know what broke, what changed, what to check and how sure you are. A UI fix PR without before/after images is incomplete.
 3. **Never commit Moth files to the fix branch.** That covers the knowledge record and the media. `.moth/` is git-ignored; never `git add -f` it. Media goes only to the evidence branch.
 4. Comment on the ticket with the PR links.
 5. Run the repo's quality checks on the PR (`gh pr checks`). If a check fails and its details aren't readable (for example, a private code-quality project and no API token), ask the user for the finding text instead of guessing fixes.
@@ -120,7 +120,7 @@ Use Stop for any failure, and for hitting a guardrail limit (`guardrails.max_tur
    - what you tried,
    - **where the workflow was invalid** (the gap in process, config or skill, not in the code),
    - a suggested improvement to Moth, if any.
-2. Comment the filled Blackbox on the ticket: what you checked, your hypotheses, and where the workflow was invalid. Attach the key test output inline.
+2. Comment on the ticket from `templates/stop-comment.md`: where it stopped, what blocks it and the one thing a human does to unblock it come first; the key test output and the filled Blackbox go in collapsed `<details>` blocks.
 3. If Verify ran at least once, append the metrics line as in step 8.2, with `"outcome":"stopped"`, the `stop_category` and `"prs":[]`.
 4. `rm -rf "$SCRATCH"`.
 5. **A failure that leaves no trail is a bug in Moth.**

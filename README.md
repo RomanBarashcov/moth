@@ -37,7 +37,7 @@ Config example: [`examples/system.yaml`](examples/system.yaml).
 - 🎭 **A Playwright spec** you can re-run from the Playwright config's folder: `npx playwright test bugs/ACME-123 --headed`.
 - 🖼️ **Before/after screenshots and GIFs** in the description.
 - ⚖️ **Independent verification:** holdout scenarios, satisfaction score, judge notes.
-- 🧭 **A short report:** verdict, confidence, what a human needs to check. The ticket gets a comment with the PR link.
+- 🧭 **A 4-line summary on top:** what was broken, what it does now, what you should check, how sure Moth is. The judge's table, repro steps and the full run log sit collapsed below. The ticket gets a comment with the PR link.
 
 You review. You merge. Moth never merges.
 
@@ -79,7 +79,7 @@ flowchart TD
 | 3. Fix | Makes the smallest change that turns the test green. Runs all tests. |
 | 4. Proof | Runs the Playwright spec on the old code and the new code. |
 | 5. Verify | An independent judge runs the holdout scenarios and scores satisfaction. Below 0.9 → back to step 3 (max 2 rounds). |
-| 6. Record | Puts the run report in the PR (or on the ticket if it stopped), writes a knowledge note, deletes its temp files. |
+| 6. Record | Puts the report in the PR (or on the ticket if it stopped: what blocks it and how to unblock), writes a knowledge note, deletes its temp files. |
 
 ## Why three agents
 
