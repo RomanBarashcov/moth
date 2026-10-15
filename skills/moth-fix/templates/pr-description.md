@@ -1,16 +1,28 @@
 Fixes <TICKET-URL>
 
 <!--
-Written in layers, most important first. A reviewer who reads only the top 4 lines must know:
-what broke, what changed, what to check, and how sure Moth is. Every line ≤ 1 sentence.
+The reader skims. Shape it so they can act from the first lines:
+- Line 1 under the title is what the reviewer does, with a time in minutes.
+- Checks are numbered, one action each, at most 3.
+- {a | b | c} means: write exactly one of them. Never leave the choices in.
+- One fact per line. No preamble, no recap, no "let me know".
 -->
 
-## ✅ Fixed | ⚠️ Partly fixed | 🙋 Needs your input: <the bug, in the user's words>
+## {✅ Fixed | ⚠️ Partly fixed | 🙋 Needs your input}: <the bug, in the user's words>
+
+**Your review (~<N> min):**
+1. <one concrete check, e.g. "Open /cart with no items: the empty-cart text shows">
+2. <optional second check>
+<!-- Nothing risky? Write a single line: "1. Nothing special: merge when CI is green." -->
 
 **Was:** <what the user saw>
 **Now:** <what the user sees>
-**Check before merging:** <1–3 concrete things, e.g. "the empty-cart copy with product", or "nothing special">
-**Confidence:** high / medium / low · tests 🔴→🟢 · judge ✅ <satisfaction> · <why, a few words>
+
+| | |
+|---|---|
+| Own tests | 🔴 → 🟢 `<test name>` |
+| Judge | {✅ satisfied · <score> | ❌ not satisfied · <score> | ❌ <score>, below <min_satisfaction> | ⚠️ inconclusive · <reason>} |
+| Confidence | {high | medium | low}: <why, a few words> |
 
 ### Before / after
 <!-- Output of `collect-evidence.sh markdown`; images live on the never-merged evidence branch. Non-UI bugs: red/green output or request/response diff instead. -->
@@ -34,6 +46,7 @@ what broke, what changed, what to check, and how sure Moth is. Every line ≤ 1 
 
 - Red → green: `<test command>`
 - Playwright: `cd <dir of playwright_config> && npx playwright test bugs/<TICKET-ID> --headed`
+<!-- Repo without Playwright: replace the line above with the scratch spec in a ```ts block and how to run it (references/browser.md). -->
 
 </details>
 

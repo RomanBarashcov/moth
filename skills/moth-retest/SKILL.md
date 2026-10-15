@@ -17,7 +17,7 @@ You take one ticket whose fix is merged or in an open PR, and show **with fresh 
 
 ## Preconditions
 
-- Same as `moth-fix`: run from the project root, `.moth/system.yaml` and `.moth/guard.json` exist (otherwise tell the user to run `/moth:moth-init`). Nothing is written to the project except holdout scenarios the scenario writer may add in step 4 and one line in `.moth/metrics.jsonl` in step 8: scratch output goes to `SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-retest-<TICKET-ID>.XXXXXX")`, deleted at the end.
+- Same as `moth-fix`: run from the project root, `.moth/system.yaml` exists (otherwise tell the user to run `/moth:moth-init`), and the same old-guard-config warning. Nothing is written to the project except holdout scenarios the scenario writer may add in step 4 and one line in `.moth/metrics.jsonl` in step 8: scratch output goes to `SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-retest-<TICKET-ID>.XXXXXX")`, deleted at the end.
 - Only the `local` environment. Staging and prod stay read-only, because a Playwright spec clicks buttons and writes data.
 - If a value you need is `TODO`, stop with `missing-config` and name the key in the report.
 
@@ -28,10 +28,10 @@ Let `<STAMP>` be the current time as `YYYYMMDD-HHMM`.
 ### 1. Gather what "fixed" means
 1. Fetch the ticket through `tracker.mcp`. Write down **expected behaviour** in 1–3 lines.
 2. Find the fix PRs in each repo: `gh pr list --state all --search "<TICKET-ID>"`. Note each PR's state and merge commit.
-3. Read each PR's description. A Moth PR names its regression tests and spec under "Proof".
+3. Read each PR's description. A Moth PR names its regression test and spec under "🔁 Reproduce it yourself". A repo without Playwright has the spec pasted there in a ```ts block.
 4. Find the proof to re-run, in this order:
-   - the tests named in the PR's "Proof" section,
-   - the spec `<repo>/<playwright_dir>/bugs/<TICKET-ID>.spec.ts`,
+   - the tests named in the PR's "Reproduce it yourself" block,
+   - the spec `<repo>/<playwright_dir>/bugs/<TICKET-ID>.spec.ts`, or the spec pasted in that block (run it from a scratch install, `moth-fix/references/browser.md`),
    - tests added or changed by the fix PR (`gh pr diff <PR> --name-only`).
 5. If you find no fix at all, stop with `no-fix-found`.
 
@@ -43,7 +43,7 @@ Let `<STAMP>` be the current time as `YYYYMMDD-HHMM`.
 ### 3. Re-run the proof
 1. Run each regression test with the repo's `test_one`. It must pass.
 2. For UI bugs, run the spec with video and screenshots on: `--output $SCRATCH/after`.
-3. **No test or spec exists** (e.g. a human fixed it without one)? Write a Playwright spec, or the lowest-level test, from the expected behaviour into the worktree only. Never commit it. Say so in the report.
+3. **No test or spec exists** (e.g. a human fixed it without one)? Write a Playwright spec, or the lowest-level test, from the expected behaviour into the worktree only. No Playwright in the repo? Use a scratch install (`moth-fix/references/browser.md`). Never commit it. Say so in the report.
 4. Run the full `test` command (and `e2e` if set) of every touched repo, to catch regressions around the fix.
 5. A failing test gets 2 more runs. If the results are mixed, it is **flaky**, not failed.
 6. **Look at every screenshot.** It must show the expected behaviour, not a blank or loading page. If it doesn't, add a `page.screenshot()` at the moment that proves it, and re-run.
@@ -85,6 +85,6 @@ Let `<STAMP>` be the current time as `YYYYMMDD-HHMM`.
 ## Hard rules
 
 - Never change product code, tests or specs in the repo to make the retest pass. Never commit or push anything except the evidence branch.
-- No writes to staging or prod.
+- No writes to staging or prod: through an MCP listed under `environments.staging/prod.read_only`, call only read actions (get, list, search, query).
 - No verdict without fresh evidence from this run. Old screenshots don't count.
-- No ✅ without the verifier. Never read or edit `.moth/scenarios/`.
+- No ✅ without the verifier. Never read or edit `.moth/scenarios/`. Keep project-wide searches (`grep -r`, `rg`, `find`) out of it: pass explicit paths or exclude `.moth/`.

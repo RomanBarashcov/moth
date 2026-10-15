@@ -112,7 +112,7 @@ It's an old rule, *the one who builds doesn't sign off*, applied to agents:
 ### Trade-offs
 - 💸 **Cost:** 3 agents plus scenarios × variations × repeats. Overkill for a typo.
 - 🧠 **Same model, shared blind spots:** all three can be wrong the same way. A different model for the judge would help.
-- 🔓 **Soft isolation:** the guard hook blocks reads of `.moth/scenarios/`, but it checks command text; it isn't a sandbox.
+- 🔓 **Soft isolation:** only the skills' instructions keep the fixer out of `.moth/scenarios/`. Nothing enforces it.
 - 📏 **Is it worth it? Measure it:** `/moth:moth-stats` shows how often the judge caught a fix your tests passed, how many of those catches ended in a merged PR, and how often it passed a fix that later broke.
 
 ## Retest after the fix
@@ -132,19 +132,18 @@ The report shows up in the chat. Add `--post` to put it on the ticket, `--on <br
 
 ## Safety rules
 
-**Blocked by a hook** (`hooks/guard.py`), not by trust:
+Moth ships **no hooks**, so it never gets in the way of your own work. Every Moth skill and agent follows these rules:
 - ❌ No push to `main`/`master`. No force push. No merge.
 - ❌ No writes to staging or prod. Read-only logs and errors only.
-- 🙈 Only the scenario writer and the judge can open `.moth/scenarios/`, including via `grep -r` or `find`.
-- 🔒 If the hook itself breaks, it blocks the command.
-
-**Limits in the skills:**
+- 🙈 Only the scenario writer and the judge open `.moth/scenarios/`.
 - 📝 Draft PR if the fix touches more than 10 files, a migration, or a public API.
 - ⏱️ Stops after ~45 min or 3 failed reproduce tries, and comments what it found.
 
-Test the hook: `python3 -m unittest discover -s hooks`
-
-⚠️ The hook is a safety net, not a sandbox. Give Moth read-only credentials for prod data first.
+These are instructions, not enforcement. Enforce what matters outside the agent:
+- **Branch protection** on `main`: no direct pushes, a review required to merge.
+- **`permissions.deny`** in `.claude/settings.local.json` for commands that must never run. Claude Code enforces these itself, but a rule matches only the start of a command: `"Bash(kubectl --context=prod:*)"` misses `kubectl delete pod x --context=prod`. Deny the whole tool (`"Bash(kubectl:*)"`), or make prod unreachable with credentials.
+- **Read-only credentials** for prod and staging data (a read-only DB role, MCP servers with writes disabled).
+- **A sandbox** for unattended runs (a devcontainer, or Docker via [sandcastle](https://github.com/mattpocock/sandcastle)).
 
 ## Where things live
 
@@ -153,7 +152,6 @@ your-project/
   .gitignore     ← one line: .moth/
   .moth/         ← all of Moth's files, never committed
     system.yaml    repos, commands, tools, rules
-    guard.json     safety rules for the hook
     knowledge/     one note per fixed bug
     metrics.jsonl  one line per run, for /moth:moth-stats
     scenarios/     holdout scenarios, one folder per ticket
@@ -170,7 +168,8 @@ Screenshots go to a separate `moth-evidence` branch. It is never merged, so no i
 `moth-init` checks for these and gives install commands:
 
 - A tracker: the `linear` or `atlassian` plugin, any other tracker MCP, or `gh` for GitHub issues
-- `playwright`: screenshots and videos
+- A browser tool to look around and read console/network logs: the `playwright` plugin, the Chrome DevTools MCP, or Claude in Chrome
+- Playwright test runner in UI repos: screenshots and videos (without it, Moth runs specs from a scratch install)
 - `superpowers`: TDD and debugging
 - Sentry, Axiom or Grafana MCP: read-only logs and errors
 - `ffmpeg`: GIFs in PRs (optional)

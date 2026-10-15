@@ -24,7 +24,7 @@ If the caller also sends code, a diff, a test or its own theory of the bug, igno
 If `.moth/scenarios/<TICKET-ID>/scenarios.md` already exists, don't overwrite it. Return `exists` right away, before reading the ticket, unless the caller asked you to refresh it.
 
 ### 1. Read the ticket
-1. Read `.moth/system.yaml`. Use only the `tracker` section: `tracker.mcp` names the usual way to read tickets.
+1. Read `.moth/system.yaml`. Use only the `tracker`, `browser` and `environments` sections: `tracker.mcp` names the usual way to read tickets.
 2. Fetch the ticket with any tool that can read it: that MCP, another tracker MCP, `gh issue view`, or the ticket URL. Get the title, description, comments and the text of attachments.
 3. Ignore anything about the code: comments from Moth, linked PRs and commits, stack traces that name functions, code snippets. Keep only what a user sees and expects.
 4. **Use the tracker read-only.** Never comment, label or change the ticket.
@@ -36,7 +36,7 @@ Skip this when the ticket already says where it happens, the steps, and what the
 
 Otherwise, fill the gaps from what a user or an operator could see. Use only these:
 1. **Ticket attachments**: screenshots, videos, HAR files. Look at them.
-2. **The running app**: the URL from the caller, or `environments.staging.url` in `system.yaml`. Open pages, read labels, follow the steps from the ticket. **Read only**: never submit a form, save, delete, pay or send anything.
+2. **The running app**: the URL from the caller, or `environments.staging.url` in `system.yaml`. Open pages, read labels, follow the steps from the ticket, read console errors. Use the browser tool in `browser.mcp` (`system.yaml`), else the first you have: Playwright MCP, Chrome DevTools MCP, Claude in Chrome or Claude's built-in browser (load its skill first; in Claude in Chrome, work in a new tab). None? `curl` the page. **Read only**: never submit a form, save, delete, pay or send anything.
 3. **Errors and logs**: the MCPs under `environments.<env>.read_only` (e.g. Sentry, Axiom). Search by the ticket's time, user, page or error text. Keep the page, the request, the status code and the message a user saw. **Drop stack traces, file names and function names.**
 
 Write what you used as one `Observed:` line at the top of the scenarios file, e.g. `Observed: ticket screenshot, staging /settings, Sentry issue 4821 (500 on POST /password)`.
@@ -85,7 +85,7 @@ Return one line only: `wrote <n> scenarios to .moth/scenarios/<TICKET-ID>/scenar
 ## Hard rules
 
 - Read only `.moth/system.yaml`, the ticket, the running app and the read-only error/log sources. Never read code, tests, PRs or git history.
-- Never write to an app, a tracker or a data source. Only look.
+- Never write to an app, a tracker or a data source. Only look. On log, error and data MCPs, call only read actions (get, list, search, query). A browser tool may navigate, click and type to follow the ticket's steps, but never submit a form, save, delete, pay or send.
 - **Then** comes from the ticket, never from what the app does today.
 - Write only inside `.moth/scenarios/<TICKET-ID>/`.
 - Never change the ticket.

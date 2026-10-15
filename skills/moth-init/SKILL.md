@@ -1,6 +1,6 @@
 ---
 name: moth-init
-description: Use to set up or extend Moth in a project ("moth init", "add a board / repo to Moth", "sync Moth guardrails"). Creates a git-ignored .moth/ folder in the project, discovers repos, commands, MCP servers and tracker boards automatically, asks only for what it cannot detect, and writes .moth/system.yaml + .moth/guard.json.
+description: Use to set up or extend Moth in a project ("moth init", "add a board / repo to Moth", "re-check Moth setup", "sync Moth guardrails"). Creates a git-ignored .moth/ folder in the project, discovers repos, commands, MCP servers and tracker boards automatically, asks only for what it cannot detect, and writes .moth/system.yaml.
 ---
 
 # Moth: init a project
@@ -14,7 +14,7 @@ The goal is a working `.moth/system.yaml` with **as few questions as possible**.
 | `moth-init` | Creates `.moth/` in the current project, or resumes it if `.moth/system.yaml` exists |
 | `moth-init --add-repo <path>` | Detects one more repo (e.g. `../other-service`) and appends it |
 | `moth-init --add-board` | Lists tracker boards and appends the chosen one |
-| `moth-init --sync` | Regenerates `.moth/guard.json` from `.moth/system.yaml`, then reports the gaps |
+| `moth-init --check` | Handles old guard config (Step 0), then re-runs the gap report (Step 3) against `.moth/system.yaml`. `--sync` is an old alias |
 
 **Never overwrite** a value marked `# confirmed`. Re-running init only adds new values or refines `# inferred` ones.
 
@@ -27,7 +27,6 @@ Moth lives in one folder at the project root (the git top level of the current d
   .gitignore     ← contains the line `.moth/`
   .moth/
     system.yaml    repos, commands, tools, rules
-    guard.json     generated from system.yaml, read by the guard hook
     knowledge/     one note per fixed bug
     metrics.jsonl  one line per fix or retest, for /moth:moth-stats
     scenarios/     one folder per ticket: holdout scenarios
@@ -42,6 +41,8 @@ Nothing else. Test output and screenshots go to a temp dir during a run and are 
 3. Run `git check-ignore -q .moth/system.yaml`. If it isn't ignored, stop and say why.
 
 `.moth/` is never committed, so Moth files can't leak into a fix branch.
+
+**Old guard config?** Before 0.5, a guard hook enforced `.moth/guard.json` and the `guardrails.bash_deny` / `write_verbs` keys in `system.yaml`. Nothing enforces them now. If any exist, show the user their `bash_deny` patterns and say plainly that they no longer block anything. Offer to add matching `permissions.deny` rules to `.claude/settings.local.json` (see the README for how those match), and add only what they approve. Then remove `bash_deny` and `write_verbs` from `system.yaml` and delete `.moth/guard.json`.
 
 **Old layout?** If the project root has `system.yaml`, `knowledge/`, `runs/` or `feedback/` from an older Moth, move `system.yaml` and `knowledge/` into `.moth/`. Then show the user the size of `runs/` and `feedback/` (`du -sh`) and ask before deleting them.
 
@@ -65,7 +66,7 @@ Run `claude mcp list` and read the enabled plugins. Classify each server:
 - **errors**: Sentry
 - **logs and metrics**: Axiom, Grafana, Datadog
 - **data**: Postgres, Redis, Kafka
-- **browser**: Playwright, Chrome DevTools
+- **browser**: Playwright, Chrome DevTools, Claude in Chrome. Write the first one found as `browser.mcp`, in the order of `moth-fix/references/browser.md`, or `auto` when none is found (Moth then uses whichever is available at run time).
 
 ### Boards
 If a tracker MCP is available, list its teams and projects (boards).
@@ -76,7 +77,6 @@ Ask **one question at a time**, each with a recommended default. Typical questio
 1. "Which board(s) should Moth watch?" Show the boards you detected.
 2. "Which label queues a ticket for Moth?" Default: `moth`.
 3. "Which MCP gives staging/prod logs? errors? metrics?" Show the servers you detected.
-4. "Any commands that must never run here?" Seed the list with prod DB hosts and `kubectl` prod contexts.
 
 Skip a question when Step 1 already answered it with high confidence. Mark that value `# inferred` and show it in the summary.
 
@@ -90,27 +90,21 @@ For each pipeline stage, show whether a capability exists. When one is missing, 
 |---|---|---|
 | intake | tracker MCP | `claude plugin install linear@claude-plugins-official` / `atlassian@claude-plugins-official` |
 | reproduce | errors / logs (optional) | Sentry, Axiom, Grafana (`--disable-write`) MCP |
-| evidence | browser automation | `claude plugin install playwright@claude-plugins-official` |
+| reproduce | a browser tool to look around and read console/network logs (optional) | `claude plugin install playwright@claude-plugins-official`, or the Chrome DevTools MCP |
+| evidence | Playwright test runner in each UI repo (optional: without it Moth runs specs from a scratch install, not committed) | `npm init playwright@latest` in the UI repo |
 | evidence | `ffmpeg` for GIFs in the PR (optional) | `brew install ffmpeg` |
 | evidence | push access to an orphan `evidence.branch` (default `moth-evidence`) in each service repo | branch protection that blocks new branches → ask the repo admin, or set `evidence.branch` to an allowed name |
 | fix / debug | TDD + debugging skills (optional) | `claude plugin install superpowers@claude-plugins-official` |
 | pr | `gh` CLI, authenticated | `gh auth login` |
+| pr | branch protection on `main`/`master` (blocks direct pushes, requires a review) | ask the repo admin, or turn it on in the repo's GitHub settings |
 
-For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a read-only DB role or a replica). The guard hook is the second line of defence, not the first.
+For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a read-only DB role or a replica). Moth's hard rules live in its instructions, not in a hook, so credentials are the real line of defence.
 
 ## Step 4: Write
 
 1. Write `.moth/system.yaml`. Use `examples/system.yaml` in this plugin as the shape, and mark every value `# inferred`, `# confirmed` or `TODO`.
-2. Generate `.moth/guard.json` from `.moth/system.yaml`:
-   ```json
-   {
-     "read_only_mcp": ["<every MCP named under environments.staging/prod.read_only>"],
-     "bash_deny": [{ "pattern": "<regex>", "reason": "<why>" }]
-   }
-   ```
-   The Moth `PreToolUse` hook reads this file. Writes through a read-only MCP, force pushes, pushes to main/master and `gh pr merge` are then denied.
-3. Create `.moth/knowledge/INDEX.md` if it is missing. `INDEX.md` starts with a `# Knowledge index` header and nothing else. Create an empty `.moth/scenarios/`.
-4. Ask before creating the queue label in the tracker. The label is visible to the whole team.
+2. Create `.moth/knowledge/INDEX.md` if it is missing. `INDEX.md` starts with a `# Knowledge index` header and nothing else. Create an empty `.moth/scenarios/`.
+3. Ask before creating the queue label in the tracker. The label is visible to the whole team.
 
 ## Step 5: Verify and summarize
 

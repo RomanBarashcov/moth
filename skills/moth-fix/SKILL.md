@@ -9,7 +9,8 @@ You take one bug ticket and drive it to a PR **autonomously**. A human only revi
 
 ## Preconditions
 
-- Run from the project root. Moth's config lives in its git-ignored `.moth/` folder; `knowledge/` below means `.moth/knowledge/`. If `.moth/system.yaml` or `.moth/guard.json` is missing, stop and tell the user to run `/moth:moth-init`.
+- Run from the project root. Moth's config lives in its git-ignored `.moth/` folder; `knowledge/` below means `.moth/knowledge/`. If `.moth/system.yaml` is missing, stop and tell the user to run `/moth:moth-init`.
+- If `.moth/guard.json` exists or `system.yaml` still has `guardrails.bash_deny`, tell the user once that these rules are no longer enforced and to run `/moth:moth-init --check`. Then carry on.
 - Put every scratch file (test output, Playwright media) in `SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-<TICKET-ID>.XXXXXX")`, never in the project. It is deleted when the run ends.
 - Keep the Blackbox (`templates/blackbox.md`) as notes during the run. Don't write it to a file.
 - Read `.moth/system.yaml` first. Repo paths in it are relative to the project root. It is the only source of truth for repos, environments, MCP servers, tracker and guardrails. Never guess a command that is not in it.
@@ -45,8 +46,9 @@ When any stage fails, jump to **Stop** and do not continue.
    - Use the lowest level that shows the bug: unit, integration or e2e.
    - For UI-visible bugs, **always** also write a Playwright spec at `<repo>/<playwright_dir>/bugs/<TICKET-ID>.spec.ts`, with video, trace and screenshot enabled.
    - Run Playwright from the config's folder, so a monorepo finds its config and its `node_modules`: `cd <repo>/<dir of playwright_config> && npx playwright test bugs/<TICKET-ID>`.
+   - The UI repo has no `playwright_config`? Run the spec from a scratch install instead (`references/browser.md`). It is evidence only, so the lowest-level test above is the committed regression test, and it must fail without the fix.
 2. Run the test and confirm it fails **for the reason in the ticket**, not for a setup error.
-3. When you get stuck, gather evidence from logs, metrics and data (read-only). If the superpowers `systematic-debugging` skill is available, use it.
+3. When you get stuck, gather evidence from logs, metrics and data (read-only). To look around the app or read its console and network logs, pick the browser tool as in `references/browser.md`. If the superpowers `systematic-debugging` skill is available, use it.
 4. Stop after `guardrails.reproduce_attempts` failed attempts. Stop with one category from `templates/blackbox.md`.
 
 ### 4. Fix
@@ -83,13 +85,13 @@ When any stage fails, jump to **Stop** and do not continue.
 2. It returns an **Independent verification** block: verdict, satisfaction score, and for each scenario its title, Then line and a judge note. That's all you get. You never see the scenarios' variations or its test code.
 3. ✅ **satisfied**: go to PR.
 4. ❌ **not satisfied**, or a score below `guardrails.min_satisfaction`: go back to **4. Fix** with the failing titles and Then lines, then redo Evidence and Verify.
-   - At most 2 rounds back to Fix. If the verifier still isn't satisfied, open a **draft** PR and say so under "Needs human input".
-5. ⚠️ **inconclusive**: fix the cause if it's yours (stack down, uncommitted fix) and run the verifier once more. Still inconclusive? Open a draft PR and say why.
+   - At most 2 rounds back to Fix. If the verifier still isn't satisfied, open a **draft** PR with status `🙋 Needs your input`, `❌ not satisfied · <score>` (or `❌ <score>, below <min>`) in the Judge row, and the failing Then lines as numbered checks under "Your review" (at most 3; write "+ N more in the Independent check" for the rest).
+5. ⚠️ **inconclusive**: fix the cause if it's yours (stack down, uncommitted fix) and run the verifier once more. Still inconclusive? Open a draft PR with status `🙋 Needs your input` and `⚠️ inconclusive · <reason>` in the Judge row, no score.
 6. **Never edit, delete or regenerate the scenarios** to get a pass.
 
 ### 7. PR
 1. Open one PR per touched repo with `gh pr create` (draft when step 4 or 6 says so). Pass the body with `--body-file`, never inline.
-2. Build the PR description from `templates/pr-description.md`: the 4-line summary first, then the evidence table from step 5, then the root cause. The Independent verification block from step 6, the repro steps and the full Blackbox go in collapsed `<details>` blocks. A reviewer who reads only the top 4 lines must know what broke, what changed, what to check and how sure you are. A UI fix PR without before/after images is incomplete.
+2. Build the PR description from `templates/pr-description.md`: the title, "Your review" checks, Was/Now and the status table first, then the evidence table from step 5, then the root cause. The Independent verification block from step 6, the repro steps and the full Blackbox go in collapsed `<details>` blocks. A reviewer who reads only down to the status table must know what to check, how long it takes, what changed and how sure you are. Follow the formatting rules in the template's comment. A UI fix PR without before/after images is incomplete.
 3. **Never commit Moth files to the fix branch.** That covers the knowledge record and the media. `.moth/` is git-ignored; never `git add -f` it. Media goes only to the evidence branch.
 4. Comment on the ticket with the PR links.
 5. Run the repo's quality checks on the PR (`gh pr checks`). If a check fails and its details aren't readable (for example, a private code-quality project and no API token), ask the user for the finding text instead of guessing fixes.
@@ -127,8 +129,8 @@ Use Stop for any failure, and for hitting a guardrail limit (`guardrails.max_tur
 
 ## Hard rules
 
-- No writes to staging or prod. No force push. No merge.
+- No writes to staging or prod: through an MCP listed under `environments.staging/prod.read_only`, call only read actions (get, list, search, query). No push to `main`/`master`, no force push, no merge.
 - Never weaken or delete an existing test to get green.
 - Don't fix anything the ticket doesn't describe. Log it as a sibling bug instead.
-- Never read, edit or delete `.moth/scenarios/`. Only the scenario writer and the verifier touch it. The guard hook denies it; if a search is denied for that reason, narrow its path instead of working around it.
+- Never read, edit or delete `.moth/scenarios/`. Only the scenario writer and the verifier touch it. Keep project-wide searches (`grep -r`, `rg`, `find`) out of it: pass explicit paths or exclude `.moth/`.
 - Never mark a fix done on your own tests alone. The verifier judges it, not you.
