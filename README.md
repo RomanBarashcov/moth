@@ -156,7 +156,6 @@ your-project/
   .moth/         ← all of Moth's files, never committed
     system.yaml    repos, commands, tools, rules
     guard.json     safety rules for the guard hook
-    guard.py       the guard hook, if you installed it for this project
     knowledge/     one note per fixed bug
     metrics.jsonl  one line per run, for /moth:moth-stats
     scenarios/     holdout scenarios, one folder per ticket

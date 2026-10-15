@@ -10,6 +10,7 @@ You take one bug ticket and drive it to a PR **autonomously**. A human only revi
 ## Preconditions
 
 - Run from the project root. Moth's config lives in its git-ignored `.moth/` folder; `knowledge/` below means `.moth/knowledge/`. If `.moth/system.yaml` or `.moth/guard.json` is missing, stop and tell the user to run `/moth:moth-init`.
+- Check the opt-in guard hook: look for `moth-guard` in `.claude/settings.local.json` and `~/.claude/settings.json`. If neither has it, tell the user once that the guard isn't installed (`/moth:moth-init --guard`) and carry on. If a copied `moth-guard.py` differs from the plugin's `hooks/guard.py` (`cmp`), tell them to run `/moth:moth-init --sync`.
 - Put every scratch file (test output, Playwright media) in `SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-<TICKET-ID>.XXXXXX")`, never in the project. It is deleted when the run ends.
 - Keep the Blackbox (`templates/blackbox.md`) as notes during the run. Don't write it to a file.
 - Read `.moth/system.yaml` first. Repo paths in it are relative to the project root. It is the only source of truth for repos, environments, MCP servers, tracker and guardrails. Never guess a command that is not in it.

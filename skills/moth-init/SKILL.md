@@ -29,7 +29,6 @@ Moth lives in one folder at the project root (the git top level of the current d
   .moth/
     system.yaml    repos, commands, tools, rules
     guard.json     generated from system.yaml, read by the guard hook
-    guard.py       the guard hook script, only if installed for this project (Step 4.5)
     knowledge/     one note per fixed bug
     metrics.jsonl  one line per fix or retest, for /moth:moth-stats
     scenarios/     one folder per ticket: holdout scenarios
@@ -118,10 +117,17 @@ For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a
 
 The plugin installs no hooks. The guard is a `PreToolUse` hook that blocks the commands above and keeps the fixing agent out of `.moth/scenarios/`. It runs on **every** tool call in the projects you install it for, your own work included, so it is your choice.
 
-Ask: "Install the Moth guard hook?"
-- **This project, just you** (recommended): copy `hooks/guard.py` from this plugin to `.moth/guard.py` and add the hook to `.claude/settings.local.json`, with the command `python3 "$CLAUDE_PROJECT_DIR/.moth/guard.py"`.
-- **All projects**: copy it to `~/.claude/hooks/moth-guard.py` and add the hook to `~/.claude/settings.json`, with the command `python3 ~/.claude/hooks/moth-guard.py`. It does nothing in a project without `.moth/guard.json`.
+The script to copy is `<this skill's dir>/../../hooks/guard.py` (the plugin's `hooks/guard.py`), never a `hooks/guard.py` in the user's project.
+
+If `~/.claude/settings.json` already has a `moth-guard` hook, say the guard is already on for all projects and skip this step. Otherwise ask: "Install the Moth guard hook?"
+- **This project, just you** (recommended): copy the script to `.claude/hooks/moth-guard.py`, append that path to `.git/info/exclude` (local only, nothing to commit), and add the hook to `.claude/settings.local.json` with this command:
+  `test ! -f "$CLAUDE_PROJECT_DIR/.claude/hooks/moth-guard.py" || python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/moth-guard.py"`
+- **All projects**: copy the script to `~/.claude/hooks/moth-guard.py` and add the hook to `~/.claude/settings.json` with this command:
+  `test ! -f ~/.claude/hooks/moth-guard.py || python3 ~/.claude/hooks/moth-guard.py`
+  It does nothing in a project without `.moth/guard.json`. If `.claude/settings.local.json` has a project `moth-guard` hook, remove it and its script so the guard doesn't run twice.
 - **Skip**: no hook. Moth still runs, and the rules hold only through the skills' instructions.
+
+The `test ! -f` prefix means a deleted script lets calls through instead of blocking every tool call until restart.
 
 The hook entry:
 
@@ -140,17 +146,15 @@ The hook entry:
 
 If the settings file exists, merge the entry into its `hooks.PreToolUse` array and leave everything else as is. Don't add it twice.
 
-Verify, using the copied path:
+Verify both halves:
+1. The script denies: `python3 -c 'import json, os; print(json.dumps({"tool_name": "Bash", "tool_input": {"command": "git push origin main"}, "cwd": os.getcwd()}))' | python3 <copied script>` prints a `deny` decision.
+2. The settings file is valid JSON and its `hooks.PreToolUse` holds the entry: `python3 -m json.tool <settings file>` and look for `moth-guard`.
 
-```bash
-echo '{"tool_name":"Bash","tool_input":{"command":"git push origin main"},"cwd":"'"$PWD"'"}' | python3 <copied guard.py>
-```
+Tell the user to restart Claude Code (or open `/hooks`) so the hook loads.
 
-It must print a `deny` decision. Tell the user to restart Claude Code (or run `/hooks`) so the hook loads.
+To remove it, delete the entry from the settings file, then the copied script. Tell the user to restart.
 
-To remove it, delete the entry from the settings file and the copied script.
-
-On `--sync`, if a copied guard script exists, overwrite it with this plugin's `hooks/guard.py` so it doesn't go stale.
+On `--sync`, overwrite every copied script that exists (`.claude/hooks/moth-guard.py`, `~/.claude/hooks/moth-guard.py`) with the plugin's `hooks/guard.py`, so they don't go stale after a plugin update.
 
 ## Step 5: Verify and summarize
 
