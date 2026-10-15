@@ -43,7 +43,7 @@ Let `<STAMP>` be the current time as `YYYYMMDD-HHMM`.
 ### 3. Re-run the proof
 1. Run each regression test with the repo's `test_one`. It must pass.
 2. For UI bugs, run the spec with video and screenshots on: `--output $SCRATCH/after`.
-3. **No test or spec exists** (e.g. a human fixed it without one)? Write a Playwright spec, or the lowest-level test, from the expected behaviour into the worktree only. Never commit it. Say so in the report.
+3. **No test or spec exists** (e.g. a human fixed it without one)? Write a Playwright spec, or the lowest-level test, from the expected behaviour into the worktree only. No Playwright in the repo? Use a scratch install (`moth-fix/references/browser.md`). Never commit it. Say so in the report.
 4. Run the full `test` command (and `e2e` if set) of every touched repo, to catch regressions around the fix.
 5. A failing test gets 2 more runs. If the results are mixed, it is **flaky**, not failed.
 6. **Look at every screenshot.** It must show the expected behaviour, not a blank or loading page. If it doesn't, add a `page.screenshot()` at the moment that proves it, and re-run.

@@ -168,7 +168,8 @@ Screenshots go to a separate `moth-evidence` branch. It is never merged, so no i
 `moth-init` checks for these and gives install commands:
 
 - A tracker: the `linear` or `atlassian` plugin, any other tracker MCP, or `gh` for GitHub issues
-- `playwright`: screenshots and videos
+- A browser tool to look around and read console/network logs: the `playwright` plugin, the Chrome DevTools MCP, or Claude in Chrome
+- Playwright test runner in UI repos: screenshots and videos (without it, Moth runs specs from a scratch install)
 - `superpowers`: TDD and debugging
 - Sentry, Axiom or Grafana MCP: read-only logs and errors
 - `ffmpeg`: GIFs in PRs (optional)

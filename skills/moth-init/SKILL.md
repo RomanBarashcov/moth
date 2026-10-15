@@ -66,7 +66,7 @@ Run `claude mcp list` and read the enabled plugins. Classify each server:
 - **errors**: Sentry
 - **logs and metrics**: Axiom, Grafana, Datadog
 - **data**: Postgres, Redis, Kafka
-- **browser**: Playwright, Chrome DevTools
+- **browser**: Playwright, Chrome DevTools, Claude in Chrome. Write the first one found as `browser.mcp`, in the order of `moth-fix/references/browser.md`, or `none`.
 
 ### Boards
 If a tracker MCP is available, list its teams and projects (boards).
@@ -90,7 +90,8 @@ For each pipeline stage, show whether a capability exists. When one is missing, 
 |---|---|---|
 | intake | tracker MCP | `claude plugin install linear@claude-plugins-official` / `atlassian@claude-plugins-official` |
 | reproduce | errors / logs (optional) | Sentry, Axiom, Grafana (`--disable-write`) MCP |
-| evidence | browser automation | `claude plugin install playwright@claude-plugins-official` |
+| reproduce | a browser tool to look around and read console/network logs (optional) | `claude plugin install playwright@claude-plugins-official`, or the Chrome DevTools MCP |
+| evidence | Playwright test runner in each UI repo (optional: without it Moth runs specs from a scratch install, not committed) | `npm init playwright@latest` in the UI repo |
 | evidence | `ffmpeg` for GIFs in the PR (optional) | `brew install ffmpeg` |
 | evidence | push access to an orphan `evidence.branch` (default `moth-evidence`) in each service repo | branch protection that blocks new branches → ask the repo admin, or set `evidence.branch` to an allowed name |
 | fix / debug | TDD + debugging skills (optional) | `claude plugin install superpowers@claude-plugins-official` |

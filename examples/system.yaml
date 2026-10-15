@@ -8,6 +8,9 @@ tracker:
   label: moth               # tickets with this label are queued for Moth
   needs_info_label: needs-info
 
+browser:                    # for looking around and reading console/network logs; proof always runs as npx playwright test
+  mcp: playwright           # playwright | chrome-devtools | claude-in-chrome | none
+
 repos:                      # any language; moth-init detects these from the repo
   service-a:
     path: .                 # the project Moth runs in; paths are relative to it

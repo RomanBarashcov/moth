@@ -46,6 +46,7 @@ The reader skims. Shape it so they can act from the first lines:
 
 - Red → green: `<test command>`
 - Playwright: `cd <dir of playwright_config> && npx playwright test bugs/<TICKET-ID> --headed`
+<!-- Repo without Playwright: replace the line above with the scratch spec in a ```ts block and how to run it (references/browser.md). -->
 
 </details>
 
