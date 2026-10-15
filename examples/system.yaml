@@ -63,9 +63,8 @@ guardrails:
   max_files: 10
   max_open_prs: 3
   concurrency: 1
-  bash_deny:                # extra commands the guard hook blocks
+  bash_deny:                # commands Moth must never run
     - pattern: "psql\\s+.*prod"
       reason: prod DB only via the read-only MCP
     - pattern: "kubectl\\s+.*--context[= ]prod"
       reason: no kubectl against prod
-  write_verbs: default      # or a list overriding guard.py DEFAULT_WRITE_VERBS

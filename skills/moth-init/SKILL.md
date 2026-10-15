@@ -1,6 +1,6 @@
 ---
 name: moth-init
-description: Use to set up or extend Moth in a project ("moth init", "add a board / repo to Moth", "sync Moth guardrails"). Creates a git-ignored .moth/ folder in the project, discovers repos, commands, MCP servers and tracker boards automatically, asks only for what it cannot detect, and writes .moth/system.yaml + .moth/guard.json.
+description: Use to set up or extend Moth in a project ("moth init", "add a board / repo to Moth", "re-check Moth setup"). Creates a git-ignored .moth/ folder in the project, discovers repos, commands, MCP servers and tracker boards automatically, asks only for what it cannot detect, and writes .moth/system.yaml.
 ---
 
 # Moth: init a project
@@ -14,8 +14,7 @@ The goal is a working `.moth/system.yaml` with **as few questions as possible**.
 | `moth-init` | Creates `.moth/` in the current project, or resumes it if `.moth/system.yaml` exists |
 | `moth-init --add-repo <path>` | Detects one more repo (e.g. `../other-service`) and appends it |
 | `moth-init --add-board` | Lists tracker boards and appends the chosen one |
-| `moth-init --sync` | Regenerates `.moth/guard.json` from `.moth/system.yaml`, refreshes an installed guard script, then reports the gaps |
-| `moth-init --guard` | Only Step 4.5: installs or removes the optional guard hook |
+| `moth-init --sync` | Re-runs the gap report (Step 3) against `.moth/system.yaml` |
 
 **Never overwrite** a value marked `# confirmed`. Re-running init only adds new values or refines `# inferred` ones.
 
@@ -28,7 +27,6 @@ Moth lives in one folder at the project root (the git top level of the current d
   .gitignore     ← contains the line `.moth/`
   .moth/
     system.yaml    repos, commands, tools, rules
-    guard.json     generated from system.yaml, read by the guard hook
     knowledge/     one note per fixed bug
     metrics.jsonl  one line per fix or retest, for /moth:moth-stats
     scenarios/     one folder per ticket: holdout scenarios
@@ -43,6 +41,8 @@ Nothing else. Test output and screenshots go to a temp dir during a run and are 
 3. Run `git check-ignore -q .moth/system.yaml`. If it isn't ignored, stop and say why.
 
 `.moth/` is never committed, so Moth files can't leak into a fix branch.
+
+**Old `.moth/guard.json`?** Earlier versions wrote it for a guard hook that no longer exists. Tell the user it can be deleted.
 
 **Old layout?** If the project root has `system.yaml`, `knowledge/`, `runs/` or `feedback/` from an older Moth, move `system.yaml` and `knowledge/` into `.moth/`. Then show the user the size of `runs/` and `feedback/` (`du -sh`) and ask before deleting them.
 
@@ -96,65 +96,15 @@ For each pipeline stage, show whether a capability exists. When one is missing, 
 | evidence | push access to an orphan `evidence.branch` (default `moth-evidence`) in each service repo | branch protection that blocks new branches → ask the repo admin, or set `evidence.branch` to an allowed name |
 | fix / debug | TDD + debugging skills (optional) | `claude plugin install superpowers@claude-plugins-official` |
 | pr | `gh` CLI, authenticated | `gh auth login` |
+| pr | branch protection on `main`/`master` (blocks direct pushes, requires a review) | ask the repo admin, or turn it on in the repo's GitHub settings |
 
-For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a read-only DB role or a replica). The optional guard hook is the second line of defence, not the first.
+For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a read-only DB role or a replica). Moth's hard rules live in its instructions, not in a hook, so credentials are the real line of defence.
 
 ## Step 4: Write
 
 1. Write `.moth/system.yaml`. Use `examples/system.yaml` in this plugin as the shape, and mark every value `# inferred`, `# confirmed` or `TODO`.
-2. Generate `.moth/guard.json` from `.moth/system.yaml`:
-   ```json
-   {
-     "read_only_mcp": ["<every MCP named under environments.staging/prod.read_only>"],
-     "bash_deny": [{ "pattern": "<regex>", "reason": "<why>" }]
-   }
-   ```
-   The guard hook (Step 4.5) reads this file. With the hook installed, writes through a read-only MCP, force pushes, pushes to main/master and `gh pr merge` are denied.
-3. Create `.moth/knowledge/INDEX.md` if it is missing. `INDEX.md` starts with a `# Knowledge index` header and nothing else. Create an empty `.moth/scenarios/`.
-4. Ask before creating the queue label in the tracker. The label is visible to the whole team.
-
-## Step 4.5: Offer the guard hook (opt-in)
-
-The plugin installs no hooks. The guard is a `PreToolUse` hook that blocks the commands above and keeps the fixing agent out of `.moth/scenarios/`. It runs on **every** tool call in the projects you install it for, your own work included, so it is your choice.
-
-The script to copy is `<this skill's dir>/../../hooks/guard.py` (the plugin's `hooks/guard.py`), never a `hooks/guard.py` in the user's project.
-
-If `~/.claude/settings.json` already has a `moth-guard` hook, say the guard is already on for all projects and skip this step. Otherwise ask: "Install the Moth guard hook?"
-- **This project, just you** (recommended): copy the script to `.claude/hooks/moth-guard.py`, append that path to `.git/info/exclude` (local only, nothing to commit), and add the hook to `.claude/settings.local.json` with this command:
-  `test ! -f "$CLAUDE_PROJECT_DIR/.claude/hooks/moth-guard.py" || python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/moth-guard.py"`
-- **All projects**: copy the script to `~/.claude/hooks/moth-guard.py` and add the hook to `~/.claude/settings.json` with this command:
-  `test ! -f ~/.claude/hooks/moth-guard.py || python3 ~/.claude/hooks/moth-guard.py`
-  It does nothing in a project without `.moth/guard.json`. If `.claude/settings.local.json` has a project `moth-guard` hook, remove it and its script so the guard doesn't run twice.
-- **Skip**: no hook. Moth still runs, and the rules hold only through the skills' instructions.
-
-The `test ! -f` prefix means a deleted script lets calls through instead of blocking every tool call until restart.
-
-The hook entry:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash|mcp__.*|Read|Grep|Glob|Edit|MultiEdit|Write|NotebookEdit",
-        "hooks": [{ "type": "command", "command": "<command above>" }]
-      }
-    ]
-  }
-}
-```
-
-If the settings file exists, merge the entry into its `hooks.PreToolUse` array and leave everything else as is. Don't add it twice.
-
-Verify both halves:
-1. The script denies: `python3 -c 'import json, os; print(json.dumps({"tool_name": "Bash", "tool_input": {"command": "git push origin main"}, "cwd": os.getcwd()}))' | python3 <copied script>` prints a `deny` decision.
-2. The settings file is valid JSON and its `hooks.PreToolUse` holds the entry: `python3 -m json.tool <settings file>` and look for `moth-guard`.
-
-Tell the user to restart Claude Code (or open `/hooks`) so the hook loads.
-
-To remove it, delete the entry from the settings file, then the copied script. Tell the user to restart.
-
-On `--sync`, overwrite every copied script that exists (`.claude/hooks/moth-guard.py`, `~/.claude/hooks/moth-guard.py`) with the plugin's `hooks/guard.py`, so they don't go stale after a plugin update.
+2. Create `.moth/knowledge/INDEX.md` if it is missing. `INDEX.md` starts with a `# Knowledge index` header and nothing else. Create an empty `.moth/scenarios/`.
+3. Ask before creating the queue label in the tracker. The label is visible to the whole team.
 
 ## Step 5: Verify and summarize
 
@@ -164,5 +114,4 @@ On `--sync`, overwrite every copied script that exists (`.claude/hooks/moth-guar
    - every `TODO`,
    - the gap report,
    - whether `.gitignore` was changed (the user commits that one line),
-   - whether the guard hook is installed, and where,
    - the exact next command: `/moth:moth-fix <TICKET-ID>`.
