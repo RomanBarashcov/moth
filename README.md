@@ -141,7 +141,7 @@ Moth ships **no hooks**, so it never gets in the way of your own work. Every Mot
 
 These are instructions, not enforcement. Enforce what matters outside the agent:
 - **Branch protection** on `main`: no direct pushes, a review required to merge.
-- **`permissions.deny`** in `.claude/settings.local.json` for commands that must never run, e.g. `"Bash(kubectl --context=prod:*)"`. Claude Code enforces these itself.
+- **`permissions.deny`** in `.claude/settings.local.json` for commands that must never run. Claude Code enforces these itself, but a rule matches only the start of a command: `"Bash(kubectl --context=prod:*)"` misses `kubectl delete pod x --context=prod`. Deny the whole tool (`"Bash(kubectl:*)"`), or make prod unreachable with credentials.
 - **Read-only credentials** for prod and staging data (a read-only DB role, MCP servers with writes disabled).
 - **A sandbox** for unattended runs (a devcontainer, or Docker via [sandcastle](https://github.com/mattpocock/sandcastle)).
 

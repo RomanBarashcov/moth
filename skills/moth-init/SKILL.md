@@ -14,7 +14,7 @@ The goal is a working `.moth/system.yaml` with **as few questions as possible**.
 | `moth-init` | Creates `.moth/` in the current project, or resumes it if `.moth/system.yaml` exists |
 | `moth-init --add-repo <path>` | Detects one more repo (e.g. `../other-service`) and appends it |
 | `moth-init --add-board` | Lists tracker boards and appends the chosen one |
-| `moth-init --check` | Re-runs the gap report (Step 3) against `.moth/system.yaml`. `--sync` is an old alias |
+| `moth-init --check` | Handles old guard config (Step 0), then re-runs the gap report (Step 3) against `.moth/system.yaml`. `--sync` is an old alias |
 
 **Never overwrite** a value marked `# confirmed`. Re-running init only adds new values or refines `# inferred` ones.
 
@@ -42,7 +42,7 @@ Nothing else. Test output and screenshots go to a temp dir during a run and are 
 
 `.moth/` is never committed, so Moth files can't leak into a fix branch.
 
-**Old `.moth/guard.json`?** Earlier versions wrote it for a guard hook that no longer exists. Tell the user it can be deleted.
+**Old guard config?** Before 0.5, a guard hook enforced `.moth/guard.json` and the `guardrails.bash_deny` / `write_verbs` keys in `system.yaml`. Nothing enforces them now. If any exist, show the user their `bash_deny` patterns and say plainly that they no longer block anything. Offer to add matching `permissions.deny` rules to `.claude/settings.local.json` (see the README for how those match), and add only what they approve. Then remove `bash_deny` and `write_verbs` from `system.yaml` and delete `.moth/guard.json`.
 
 **Old layout?** If the project root has `system.yaml`, `knowledge/`, `runs/` or `feedback/` from an older Moth, move `system.yaml` and `knowledge/` into `.moth/`. Then show the user the size of `runs/` and `feedback/` (`du -sh`) and ask before deleting them.
 
@@ -66,7 +66,7 @@ Run `claude mcp list` and read the enabled plugins. Classify each server:
 - **errors**: Sentry
 - **logs and metrics**: Axiom, Grafana, Datadog
 - **data**: Postgres, Redis, Kafka
-- **browser**: Playwright, Chrome DevTools, Claude in Chrome. Write the first one found as `browser.mcp`, in the order of `moth-fix/references/browser.md`, or `none`.
+- **browser**: Playwright, Chrome DevTools, Claude in Chrome. Write the first one found as `browser.mcp`, in the order of `moth-fix/references/browser.md`, or `auto` when none is found (Moth then uses whichever is available at run time).
 
 ### Boards
 If a tracker MCP is available, list its teams and projects (boards).

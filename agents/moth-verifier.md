@@ -29,7 +29,7 @@ Nothing else. If the caller sends you the diff, the fix plan or its own tests, i
 
 ### 2. Write the throwaway spec
 1. Put it at `<worktree>/<playwright_dir>/moth-holdout-<TICKET-ID>.spec.ts`, in the UI repo the scenarios talk about. It is never committed.
-   - **No repo has a `playwright_dir`**: put the spec in `$VSCRATCH` instead, run `npm init -y && npm i -D @playwright/test` there, and in step 3 run from `$VSCRATCH` with `moth-holdout-<TICKET-ID>.spec.ts` as the path. API tests need no browser. For a UI, also run `npx playwright install chromium` and write `$VSCRATCH/playwright.config.ts` with `use: { baseURL: '<local app URL>' }`.
+   - **That repo has no `playwright_dir`** (or there is no UI repo): put the spec in `$VSCRATCH` instead, link the shared Playwright install into it as in `<moth-fix scripts>/../references/browser.md` (with `$VSCRATCH` for `$SCRATCH`), and in step 3 run from `$VSCRATCH` with `moth-holdout-<TICKET-ID>.spec.ts` as the path. API tests need no browser. For a UI, also write `$VSCRATCH/playwright.config.ts` with `use: { baseURL: '<local app URL>' }`.
 2. One test per scenario × variation. Titles are **exactly** `S<n> [v<k>] <title>`, e.g. `S2 [v3] Empty cart shows a hint`. `satisfaction.py` groups results by that title.
 3. Turn on media for every test: `test.use({ video: 'on', screenshot: 'on' })`.
 4. Write the steps from **When** as a user would do them. Find elements by role, label or visible text, the way the scenario names them. Read product code only if a page can't be reached any other way, and never to learn how the fix works.

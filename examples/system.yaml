@@ -9,7 +9,7 @@ tracker:
   needs_info_label: needs-info
 
 browser:                    # for looking around and reading console/network logs; proof always runs as npx playwright test
-  mcp: playwright           # playwright | chrome-devtools | claude-in-chrome | none
+  mcp: playwright           # playwright | chrome-devtools | claude-in-chrome | builtin | auto (first available)
 
 repos:                      # any language; moth-init detects these from the repo
   service-a:

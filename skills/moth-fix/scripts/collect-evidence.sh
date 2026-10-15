@@ -95,8 +95,12 @@ markdown() {
 
 publish() {
   local repo=$1 src=$2 ticket=$3 branch=${4:-moth-evidence}
+  local default
+  default=$(git -C "$repo" symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || true)
   case "$branch" in
-    main|master) echo "refusing to publish evidence to '$branch'; set evidence.branch to its own branch" >&2; return 1 ;;
+    main|master|"${default#origin/}"|moth/*)
+      echo "refusing to publish evidence to '$branch' (a default or fix branch); set evidence.branch to its own branch" >&2
+      return 1 ;;
   esac
   local parent commit file index repo_name
   src=$(cd "$src" && pwd)

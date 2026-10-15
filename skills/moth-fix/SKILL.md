@@ -10,6 +10,7 @@ You take one bug ticket and drive it to a PR **autonomously**. A human only revi
 ## Preconditions
 
 - Run from the project root. Moth's config lives in its git-ignored `.moth/` folder; `knowledge/` below means `.moth/knowledge/`. If `.moth/system.yaml` is missing, stop and tell the user to run `/moth:moth-init`.
+- If `.moth/guard.json` exists or `system.yaml` still has `guardrails.bash_deny`, tell the user once that these rules are no longer enforced and to run `/moth:moth-init --check`. Then carry on.
 - Put every scratch file (test output, Playwright media) in `SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/moth-<TICKET-ID>.XXXXXX")`, never in the project. It is deleted when the run ends.
 - Keep the Blackbox (`templates/blackbox.md`) as notes during the run. Don't write it to a file.
 - Read `.moth/system.yaml` first. Repo paths in it are relative to the project root. It is the only source of truth for repos, environments, MCP servers, tracker and guardrails. Never guess a command that is not in it.
@@ -45,7 +46,7 @@ When any stage fails, jump to **Stop** and do not continue.
    - Use the lowest level that shows the bug: unit, integration or e2e.
    - For UI-visible bugs, **always** also write a Playwright spec at `<repo>/<playwright_dir>/bugs/<TICKET-ID>.spec.ts`, with video, trace and screenshot enabled.
    - Run Playwright from the config's folder, so a monorepo finds its config and its `node_modules`: `cd <repo>/<dir of playwright_config> && npx playwright test bugs/<TICKET-ID>`.
-   - The UI repo has no `playwright_config`? Run the spec from a scratch install instead (`references/browser.md`).
+   - The UI repo has no `playwright_config`? Run the spec from a scratch install instead (`references/browser.md`). It is evidence only, so the lowest-level test above is the committed regression test, and it must fail without the fix.
 2. Run the test and confirm it fails **for the reason in the ticket**, not for a setup error.
 3. When you get stuck, gather evidence from logs, metrics and data (read-only). To look around the app or read its console and network logs, pick the browser tool as in `references/browser.md`. If the superpowers `systematic-debugging` skill is available, use it.
 4. Stop after `guardrails.reproduce_attempts` failed attempts. Stop with one category from `templates/blackbox.md`.
@@ -84,7 +85,7 @@ When any stage fails, jump to **Stop** and do not continue.
 2. It returns an **Independent verification** block: verdict, satisfaction score, and for each scenario its title, Then line and a judge note. That's all you get. You never see the scenarios' variations or its test code.
 3. ✅ **satisfied**: go to PR.
 4. ❌ **not satisfied**, or a score below `guardrails.min_satisfaction`: go back to **4. Fix** with the failing titles and Then lines, then redo Evidence and Verify.
-   - At most 2 rounds back to Fix. If the verifier still isn't satisfied, open a **draft** PR with status `🙋 Needs your input`, `❌ not satisfied · <score>` (or `❌ <score>, below <min>`) in the Judge row, and each failing Then line as a numbered check under "Your review".
+   - At most 2 rounds back to Fix. If the verifier still isn't satisfied, open a **draft** PR with status `🙋 Needs your input`, `❌ not satisfied · <score>` (or `❌ <score>, below <min>`) in the Judge row, and the failing Then lines as numbered checks under "Your review" (at most 3; write "+ N more in the Independent check" for the rest).
 5. ⚠️ **inconclusive**: fix the cause if it's yours (stack down, uncommitted fix) and run the verifier once more. Still inconclusive? Open a draft PR with status `🙋 Needs your input` and `⚠️ inconclusive · <reason>` in the Judge row, no score.
 6. **Never edit, delete or regenerate the scenarios** to get a pass.
 
