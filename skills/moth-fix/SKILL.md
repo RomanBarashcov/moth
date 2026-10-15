@@ -128,7 +128,6 @@ Use Stop for any failure, and for hitting a guardrail limit (`guardrails.max_tur
 ## Hard rules
 
 - No writes to staging or prod: through an MCP listed under `environments.staging/prod.read_only`, call only read actions (get, list, search, query). No push to `main`/`master`, no force push, no merge.
-- Never run a command that matches a regex in `guardrails.bash_deny`.
 - Never weaken or delete an existing test to get green.
 - Don't fix anything the ticket doesn't describe. Log it as a sibling bug instead.
 - Never read, edit or delete `.moth/scenarios/`. Only the scenario writer and the verifier touch it. Keep project-wide searches (`grep -r`, `rg`, `find`) out of it: pass explicit paths or exclude `.moth/`.

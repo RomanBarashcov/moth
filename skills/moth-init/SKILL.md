@@ -77,7 +77,6 @@ Ask **one question at a time**, each with a recommended default. Typical questio
 1. "Which board(s) should Moth watch?" Show the boards you detected.
 2. "Which label queues a ticket for Moth?" Default: `moth`.
 3. "Which MCP gives staging/prod logs? errors? metrics?" Show the servers you detected.
-4. "Any commands that must never run here?" Seed the list with prod DB hosts and `kubectl` prod contexts.
 
 Skip a question when Step 1 already answered it with high confidence. Mark that value `# inferred` and show it in the summary.
 

@@ -135,7 +135,6 @@ The report shows up in the chat. Add `--post` to put it on the ticket, `--on <br
 Moth ships **no hooks**, so it never gets in the way of your own work. Every Moth skill and agent follows these rules:
 - ❌ No push to `main`/`master`. No force push. No merge.
 - ❌ No writes to staging or prod. Read-only logs and errors only.
-- ❌ Never runs a command matching a regex in `guardrails.bash_deny`.
 - 🙈 Only the scenario writer and the judge open `.moth/scenarios/`.
 - 📝 Draft PR if the fix touches more than 10 files, a migration, or a public API.
 - ⏱️ Stops after ~45 min or 3 failed reproduce tries, and comments what it found.
