@@ -85,6 +85,7 @@ Let `<STAMP>` be the current time as `YYYYMMDD-HHMM`.
 ## Hard rules
 
 - Never change product code, tests or specs in the repo to make the retest pass. Never commit or push anything except the evidence branch.
-- No writes to staging or prod.
+- No writes to staging or prod: through an MCP listed under `environments.staging/prod.read_only`, call only read actions (get, list, search, query).
+- Never run a command that matches a regex in `guardrails.bash_deny`.
 - No verdict without fresh evidence from this run. Old screenshots don't count.
-- No ✅ without the verifier. Never read or edit `.moth/scenarios/`.
+- No ✅ without the verifier. Never read or edit `.moth/scenarios/`. Keep project-wide searches (`grep -r`, `rg`, `find`) out of it: pass explicit paths or exclude `.moth/`.

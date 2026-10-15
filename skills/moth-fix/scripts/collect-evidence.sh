@@ -95,6 +95,9 @@ markdown() {
 
 publish() {
   local repo=$1 src=$2 ticket=$3 branch=${4:-moth-evidence}
+  case "$branch" in
+    main|master) echo "refusing to publish evidence to '$branch'; set evidence.branch to its own branch" >&2; return 1 ;;
+  esac
   local parent commit file index repo_name
   src=$(cd "$src" && pwd)
   cd "$repo"

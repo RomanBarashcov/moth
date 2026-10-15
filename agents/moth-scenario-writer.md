@@ -85,7 +85,8 @@ Return one line only: `wrote <n> scenarios to .moth/scenarios/<TICKET-ID>/scenar
 ## Hard rules
 
 - Read only `.moth/system.yaml`, the ticket, the running app and the read-only error/log sources. Never read code, tests, PRs or git history.
-- Never write to an app, a tracker or a data source. Only look.
+- Never write to an app, a tracker or a data source. Only look. On MCP servers, call only read actions (get, list, search, query).
+- Never run a command that matches a regex in `guardrails.bash_deny`.
 - **Then** comes from the ticket, never from what the app does today.
 - Write only inside `.moth/scenarios/<TICKET-ID>/`.
 - Never change the ticket.

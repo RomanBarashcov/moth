@@ -63,7 +63,7 @@ guardrails:
   max_files: 10
   max_open_prs: 3
   concurrency: 1
-  bash_deny:                # commands Moth must never run
+  bash_deny:                # regexes for commands Moth must never run (instructions only; use permissions.deny to enforce)
     - pattern: "psql\\s+.*prod"
       reason: prod DB only via the read-only MCP
     - pattern: "kubectl\\s+.*--context[= ]prod"

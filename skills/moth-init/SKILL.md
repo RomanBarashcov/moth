@@ -1,6 +1,6 @@
 ---
 name: moth-init
-description: Use to set up or extend Moth in a project ("moth init", "add a board / repo to Moth", "re-check Moth setup"). Creates a git-ignored .moth/ folder in the project, discovers repos, commands, MCP servers and tracker boards automatically, asks only for what it cannot detect, and writes .moth/system.yaml.
+description: Use to set up or extend Moth in a project ("moth init", "add a board / repo to Moth", "re-check Moth setup", "sync Moth guardrails"). Creates a git-ignored .moth/ folder in the project, discovers repos, commands, MCP servers and tracker boards automatically, asks only for what it cannot detect, and writes .moth/system.yaml.
 ---
 
 # Moth: init a project
@@ -14,7 +14,7 @@ The goal is a working `.moth/system.yaml` with **as few questions as possible**.
 | `moth-init` | Creates `.moth/` in the current project, or resumes it if `.moth/system.yaml` exists |
 | `moth-init --add-repo <path>` | Detects one more repo (e.g. `../other-service`) and appends it |
 | `moth-init --add-board` | Lists tracker boards and appends the chosen one |
-| `moth-init --sync` | Re-runs the gap report (Step 3) against `.moth/system.yaml` |
+| `moth-init --check` | Re-runs the gap report (Step 3) against `.moth/system.yaml`. `--sync` is an old alias |
 
 **Never overwrite** a value marked `# confirmed`. Re-running init only adds new values or refines `# inferred` ones.
 

@@ -132,16 +132,17 @@ The report shows up in the chat. Add `--post` to put it on the ticket, `--on <br
 
 ## Safety rules
 
-Moth ships **no hooks**, so it never gets in the way of your own work. The rules live in the skills:
+Moth ships **no hooks**, so it never gets in the way of your own work. Every Moth skill and agent follows these rules:
 - ❌ No push to `main`/`master`. No force push. No merge.
 - ❌ No writes to staging or prod. Read-only logs and errors only.
-- ❌ Never runs a command listed in `guardrails.bash_deny`.
+- ❌ Never runs a command matching a regex in `guardrails.bash_deny`.
 - 🙈 Only the scenario writer and the judge open `.moth/scenarios/`.
 - 📝 Draft PR if the fix touches more than 10 files, a migration, or a public API.
 - ⏱️ Stops after ~45 min or 3 failed reproduce tries, and comments what it found.
 
 These are instructions, not enforcement. Enforce what matters outside the agent:
 - **Branch protection** on `main`: no direct pushes, a review required to merge.
+- **`permissions.deny`** in `.claude/settings.local.json` for commands that must never run, e.g. `"Bash(kubectl --context=prod:*)"`. Claude Code enforces these itself.
 - **Read-only credentials** for prod and staging data (a read-only DB role, MCP servers with writes disabled).
 - **A sandbox** for unattended runs (a devcontainer, or Docker via [sandcastle](https://github.com/mattpocock/sandcastle)).
 
