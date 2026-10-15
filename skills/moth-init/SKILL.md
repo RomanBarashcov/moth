@@ -14,7 +14,8 @@ The goal is a working `.moth/system.yaml` with **as few questions as possible**.
 | `moth-init` | Creates `.moth/` in the current project, or resumes it if `.moth/system.yaml` exists |
 | `moth-init --add-repo <path>` | Detects one more repo (e.g. `../other-service`) and appends it |
 | `moth-init --add-board` | Lists tracker boards and appends the chosen one |
-| `moth-init --sync` | Regenerates `.moth/guard.json` from `.moth/system.yaml`, then reports the gaps |
+| `moth-init --sync` | Regenerates `.moth/guard.json` from `.moth/system.yaml`, refreshes an installed guard script, then reports the gaps |
+| `moth-init --guard` | Only Step 4.5: installs or removes the optional guard hook |
 
 **Never overwrite** a value marked `# confirmed`. Re-running init only adds new values or refines `# inferred` ones.
 
@@ -28,6 +29,7 @@ Moth lives in one folder at the project root (the git top level of the current d
   .moth/
     system.yaml    repos, commands, tools, rules
     guard.json     generated from system.yaml, read by the guard hook
+    guard.py       the guard hook script, only if installed for this project (Step 4.5)
     knowledge/     one note per fixed bug
     metrics.jsonl  one line per fix or retest, for /moth:moth-stats
     scenarios/     one folder per ticket: holdout scenarios
@@ -96,7 +98,7 @@ For each pipeline stage, show whether a capability exists. When one is missing, 
 | fix / debug | TDD + debugging skills (optional) | `claude plugin install superpowers@claude-plugins-official` |
 | pr | `gh` CLI, authenticated | `gh auth login` |
 
-For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a read-only DB role or a replica). The guard hook is the second line of defence, not the first.
+For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a read-only DB role or a replica). The optional guard hook is the second line of defence, not the first.
 
 ## Step 4: Write
 
@@ -108,9 +110,47 @@ For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a
      "bash_deny": [{ "pattern": "<regex>", "reason": "<why>" }]
    }
    ```
-   The Moth `PreToolUse` hook reads this file. Writes through a read-only MCP, force pushes, pushes to main/master and `gh pr merge` are then denied.
+   The guard hook (Step 4.5) reads this file. With the hook installed, writes through a read-only MCP, force pushes, pushes to main/master and `gh pr merge` are denied.
 3. Create `.moth/knowledge/INDEX.md` if it is missing. `INDEX.md` starts with a `# Knowledge index` header and nothing else. Create an empty `.moth/scenarios/`.
 4. Ask before creating the queue label in the tracker. The label is visible to the whole team.
+
+## Step 4.5: Offer the guard hook (opt-in)
+
+The plugin installs no hooks. The guard is a `PreToolUse` hook that blocks the commands above and keeps the fixing agent out of `.moth/scenarios/`. It runs on **every** tool call in the projects you install it for, your own work included, so it is your choice.
+
+Ask: "Install the Moth guard hook?"
+- **This project, just you** (recommended): copy `hooks/guard.py` from this plugin to `.moth/guard.py` and add the hook to `.claude/settings.local.json`, with the command `python3 "$CLAUDE_PROJECT_DIR/.moth/guard.py"`.
+- **All projects**: copy it to `~/.claude/hooks/moth-guard.py` and add the hook to `~/.claude/settings.json`, with the command `python3 ~/.claude/hooks/moth-guard.py`. It does nothing in a project without `.moth/guard.json`.
+- **Skip**: no hook. Moth still runs, and the rules hold only through the skills' instructions.
+
+The hook entry:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|mcp__.*|Read|Grep|Glob|Edit|MultiEdit|Write|NotebookEdit",
+        "hooks": [{ "type": "command", "command": "<command above>" }]
+      }
+    ]
+  }
+}
+```
+
+If the settings file exists, merge the entry into its `hooks.PreToolUse` array and leave everything else as is. Don't add it twice.
+
+Verify, using the copied path:
+
+```bash
+echo '{"tool_name":"Bash","tool_input":{"command":"git push origin main"},"cwd":"'"$PWD"'"}' | python3 <copied guard.py>
+```
+
+It must print a `deny` decision. Tell the user to restart Claude Code (or run `/hooks`) so the hook loads.
+
+To remove it, delete the entry from the settings file and the copied script.
+
+On `--sync`, if a copied guard script exists, overwrite it with this plugin's `hooks/guard.py` so it doesn't go stale.
 
 ## Step 5: Verify and summarize
 
@@ -120,4 +160,5 @@ For data stores (Postgres, Redis, Kafka), recommend **read-only credentials** (a
    - every `TODO`,
    - the gap report,
    - whether `.gitignore` was changed (the user commits that one line),
+   - whether the guard hook is installed, and where,
    - the exact next command: `/moth:moth-fix <TICKET-ID>`.

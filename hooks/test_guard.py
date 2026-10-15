@@ -324,6 +324,7 @@ class HoldoutTest(unittest.TestCase):
             ("Bash", {"command": "cat .moth/system.yaml"}),
             ("Bash", {"command": "echo '{}' >> .moth/metrics.jsonl"}),
             ("Write", {"file_path": ".moth/metrics.jsonl", "content": "{}"}),
+            ("Bash", {"command": "cp hooks/guard.py .moth/guard.py"}),
             ("Bash", {"command": "grep -rn ACME src"}),
             ("Bash", {"command": "find src -name '*.go'"}),
             ("Bash", {"command": "rg ACME"}),
