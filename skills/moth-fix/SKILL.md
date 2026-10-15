@@ -83,7 +83,7 @@ When any stage fails, jump to **Stop** and do not continue.
 2. It returns an **Independent verification** block: verdict, satisfaction score, and for each scenario its title, Then line and a judge note. That's all you get. You never see the scenarios' variations or its test code.
 3. ✅ **satisfied**: go to PR.
 4. ❌ **not satisfied**, or a score below `guardrails.min_satisfaction`: go back to **4. Fix** with the failing titles and Then lines, then redo Evidence and Verify.
-   - At most 2 rounds back to Fix. If the verifier still isn't satisfied, open a **draft** PR and say so under "Needs human input".
+   - At most 2 rounds back to Fix. If the verifier still isn't satisfied, open a **draft** PR titled `🙋 Needs your input`, with `judge ❌ not satisfied <score>` on the Confidence line and the failing Then lines under "Check before merging".
 5. ⚠️ **inconclusive**: fix the cause if it's yours (stack down, uncommitted fix) and run the verifier once more. Still inconclusive? Open a draft PR and say why.
 6. **Never edit, delete or regenerate the scenarios** to get a pass.
 

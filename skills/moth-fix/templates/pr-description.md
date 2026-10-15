@@ -10,7 +10,7 @@ what broke, what changed, what to check, and how sure Moth is. Every line ≤ 1 
 **Was:** <what the user saw>
 **Now:** <what the user sees>
 **Check before merging:** <1–3 concrete things, e.g. "the empty-cart copy with product", or "nothing special">
-**Confidence:** high / medium / low · tests 🔴→🟢 · judge ✅ <satisfaction> · <why, a few words>
+**Confidence:** high / medium / low · tests 🔴→🟢 · judge ✅ satisfied / ❌ not satisfied / ⚠️ inconclusive <satisfaction> · <why, a few words>
 
 ### Before / after
 <!-- Output of `collect-evidence.sh markdown`; images live on the never-merged evidence branch. Non-UI bugs: red/green output or request/response diff instead. -->
